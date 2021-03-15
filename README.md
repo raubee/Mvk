@@ -26,7 +26,7 @@ Next steps :
 # Libraries
 Vulkan hpp c++ bindings for Vulkan : [Vulkan-hpp](https://github.com/KhronosGroup/Vulkan-Hpp)</br>
 Vulkan memory allocator : [Vma](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator)</br>
-Vulkan memory allocator bindings for hpp and C++ 20 support : [Vma-hpp c++ 20 support](git@github.com:Cvelth/VulkanMemoryAllocator-Hpp_fork.git)</br>
+Vulkan memory allocator bindings for hpp and C++ 20 support : [Vma-hpp c++ 20 support](https://github.com/Cvelth/VulkanMemoryAllocator-Hpp_fork.git)</br>
 Windows diplay : [GLFW](https://www.glfw.org/)</br>
 Maths : [GLM](https://glm.g-truc.net/0.9.9/index.html)</br>
 Image loading : [stb_image.h](https://github.com/nothings/stb/blob/master/stb_image.h)</br>
