@@ -1,7 +1,7 @@
 # mvk 
 mvk is a library for building vulkan based samples
 It's written in C++ 20</br>
-Currently, It renders a 3D models with a basic texture.</br>
+Currently, it renders 3D models with a basic texture.</br>
 
 Vulkan concepts adressed: 
 - Physical Devices
@@ -15,7 +15,7 @@ Vulkan concepts adressed:
 - Loading 3D model (vertex & faces)
 - Depth test
 
-textures supported : (all stb_image formats) **.jpg**, **.png**, **.tga**, **.bmp**, **.psd**, **.gif**, **.hdr**, **.pic** </br>
+Textures supported : (all stb_image formats) **.jpg**, **.png**, **.tga**, **.bmp**, **.psd**, **.gif**, **.hdr**, **.pic** </br>
 3D models extensions supported : **.obj**
 
 Next steps :
