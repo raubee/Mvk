@@ -32,7 +32,7 @@ Maths : [GLM](https://glm.g-truc.net/0.9.9/index.html)</br>
 Image loading : [stb_image.h](https://github.com/nothings/stb/blob/master/stb_image.h)</br>
 Model loading : [tiny_obj_loader.h](https://github.com/tinyobjloader/tinyobjloader)</br>
 
-Mostly based on https://vulkan-tutorial.com/ tutorial.
+Mostly based on https://vulkan-tutorial.com/
 
 ## Simple Viewer (SimpleViewer.h)
 
