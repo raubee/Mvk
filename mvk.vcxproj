@@ -137,49 +137,49 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AppBase.cpp" />
-    <ClCompile Include="BaseMaterial.cpp" />
-    <ClCompile Include="Context.cpp" />
-    <ClCompile Include="ContextCreateInfo.cpp" />
-    <ClCompile Include="Geometry.cpp" />
-    <ClCompile Include="GraphicPipeline.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="Material.cpp" />
-    <ClCompile Include="Mesh.cpp" />
-    <ClCompile Include="ObjViewer.cpp" />
-    <ClCompile Include="RenderPass.cpp" />
-    <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="SwapChain.cpp" />
-    <ClCompile Include="SwapchainFrame.cpp" />
-    <ClCompile Include="Texture2D.cpp" />
-    <ClCompile Include="VulkanVma.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="AppBase.h" />
-    <ClInclude Include="BaseMaterial.h" />
-    <ClInclude Include="Context.h" />
-    <ClInclude Include="ContextCreateInfo.h" />
-    <ClInclude Include="Geometry.h" />
-    <ClInclude Include="GraphicPipeline.h" />
-    <ClInclude Include="Material.h" />
-    <ClInclude Include="Mesh.h" />
-    <ClInclude Include="ObjViewer.h" />
-    <ClInclude Include="RenderPass.h" />
-    <ClInclude Include="Scene.h" />
-    <ClInclude Include="Shader.h" />
-    <ClInclude Include="SimpleViewer.h" />
-    <ClInclude Include="SwapChain.h" />
-    <ClInclude Include="SwapchainFrame.h" />
-    <ClInclude Include="Texture2D.h" />
-    <ClInclude Include="UniformBufferObject.h" />
-    <ClInclude Include="Vertex.h" />
-    <ClInclude Include="Vulkan.h" />
-    <ClInclude Include="VulkanVma.h" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include=".editorconfig" />
     <None Include="shaders\shader.frag" />
     <None Include="shaders\shader.vert" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\AppBase.cpp" />
+    <ClCompile Include="src\BaseMaterial.cpp" />
+    <ClCompile Include="src\Context.cpp" />
+    <ClCompile Include="src\ContextCreateInfo.cpp" />
+    <ClCompile Include="src\Geometry.cpp" />
+    <ClCompile Include="src\GraphicPipeline.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Material.cpp" />
+    <ClCompile Include="src\Mesh.cpp" />
+    <ClCompile Include="src\ObjViewer.cpp" />
+    <ClCompile Include="src\RenderPass.cpp" />
+    <ClCompile Include="src\Shader.cpp" />
+    <ClCompile Include="src\SwapChain.cpp" />
+    <ClCompile Include="src\SwapchainFrame.cpp" />
+    <ClCompile Include="src\Texture2D.cpp" />
+    <ClCompile Include="src\VulkanVma.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\AppBase.h" />
+    <ClInclude Include="src\BaseMaterial.h" />
+    <ClInclude Include="src\Context.h" />
+    <ClInclude Include="src\ContextCreateInfo.h" />
+    <ClInclude Include="src\Geometry.h" />
+    <ClInclude Include="src\GraphicPipeline.h" />
+    <ClInclude Include="src\Material.h" />
+    <ClInclude Include="src\Mesh.h" />
+    <ClInclude Include="src\ObjViewer.h" />
+    <ClInclude Include="src\RenderPass.h" />
+    <ClInclude Include="src\Scene.h" />
+    <ClInclude Include="src\Shader.h" />
+    <ClInclude Include="src\SimpleViewer.h" />
+    <ClInclude Include="src\SwapChain.h" />
+    <ClInclude Include="src\SwapchainFrame.h" />
+    <ClInclude Include="src\Texture2D.h" />
+    <ClInclude Include="src\UniformBufferObject.h" />
+    <ClInclude Include="src\Vertex.h" />
+    <ClInclude Include="src\Vulkan.h" />
+    <ClInclude Include="src\VulkanVma.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

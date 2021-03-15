@@ -4,8 +4,8 @@
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
-#include "SimpleViewer.h"
-//#include "ObjViewer.h"
+//#include "SimpleViewer.h"
+#include "ObjViewer.h"
 
 vk::SurfaceKHR getGlfwSurfaceKHR(mvk::Context context, GLFWwindow* window);
 static void
@@ -48,8 +48,8 @@ int main()
 	context.pickPhysicalDevice(createInfo);
 	context.createDevice(createInfo);
 
-	//ObjViewer app;
-	SimpleViewer app;
+	ObjViewer app;
+	//SimpleViewer app;
 	glfwSetWindowUserPointer(window, &app);
 	app.setup(context, surface);
 
@@ -91,10 +91,10 @@ vk::SurfaceKHR getGlfwSurfaceKHR(const mvk::Context context, GLFWwindow* window)
 
 void framebufferResizeCallback(GLFWwindow* window, int width, int height)
 {
-	/*const auto app =
-		reinterpret_cast<ObjViewer*>(glfwGetWindowUserPointer(window));*/
 	const auto app =
-		reinterpret_cast<SimpleViewer*>(glfwGetWindowUserPointer(window));
+		reinterpret_cast<ObjViewer*>(glfwGetWindowUserPointer(window));
+	/*const auto app =
+		reinterpret_cast<SimpleViewer*>(glfwGetWindowUserPointer(window));*/
 	
 	while (width == 0 || height == 0)
 	{
