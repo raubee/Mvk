@@ -15,7 +15,7 @@ Vulkan concepts adressed:
 - Loading 3D model (vertex & faces)
 - Depth test
 
-textures supported : (all stb_image formats) **.jpg**, **.png**, **.tga**, **.bmp**, **.psd**, **.gif**, **.hdr**, **.pic**
+textures supported : (all stb_image formats) **.jpg**, **.png**, **.tga**, **.bmp**, **.psd**, **.gif**, **.hdr**, **.pic** </br>
 3D models extensions supported : **.obj**
 
 Next steps :
