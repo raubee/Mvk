@@ -2,16 +2,18 @@
 
 using namespace mvk;
 
-BaseMaterial::BaseMaterial() : Material("shaders/vert.spv", "shaders/frag.spv")
-{
-}
-
 void BaseMaterial::load(const vma::Allocator allocator,
                         const vk::Device device,
                         const vk::CommandPool commandPool,
                         const vk::Queue transferQueue)
 {
 	Material::load(allocator, device, commandPool, transferQueue);
+
+	vertShader = new Shader(device, "shaders/vert.spv",
+		vk::ShaderStageFlagBits::eVertex);
+
+	fragShader = new Shader(device, "shaders/frag.spv",
+		vk::ShaderStageFlagBits::eFragment);
 
 	const auto albedoName = description.albedo.c_str();
 

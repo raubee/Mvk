@@ -2,50 +2,17 @@
 
 using namespace mvk;
 
-Material::Material(const std::string& vertShader,
-                   const std::string& fragShader,
-                   const std::string& geoShader,
-                   const std::string& tesShader)
+Material::Material()
 {
-	this->vertShader = new Shader(vertShader,
-	                              vk::ShaderStageFlagBits::eVertex);
-	this->fragShader = new Shader(fragShader,
-	                              vk::ShaderStageFlagBits::eFragment);
-	if (!geoShader.empty())
-	{
-		this->geoShader = new Shader(geoShader,
-		                             vk::ShaderStageFlagBits::eGeometry);
-	}
-	else this->geoShader = nullptr;
-
-	if (!tesShader.empty())
-	{
-		this->tesShader = new Shader(tesShader,
-		                             vk::ShaderStageFlagBits::
-		                             eTessellationControl);
-	}
-	else this->tesShader = nullptr;
 }
 
-Material::Material(Shader vertShader, Shader fragShader, Shader geoShader,
-                   Shader tesShader)
+Material::Material(Shader* vertShader, Shader* fragShader, Shader* geoShader,
+                   Shader* tesShader)
 {
-	this->vertShader = &vertShader;
-	this->fragShader = &fragShader;
-	this->geoShader = &geoShader;
-	this->tesShader = &tesShader;
-}
-
-void Material::loadShaders(const vk::Device device) const
-{
-	vertShader->load(device);
-	fragShader->load(device);
-
-	if (geoShader != nullptr)
-		geoShader->load(device);
-
-	if (tesShader != nullptr)
-		tesShader->load(device);
+	this->vertShader = vertShader;
+	this->fragShader = fragShader;
+	this->geoShader = geoShader;
+	this->tesShader = tesShader;
 }
 
 void Material::load(const vma::Allocator allocator,
@@ -78,9 +45,23 @@ std::vector<vk::PipelineShaderStageCreateInfo> Material::
 getPipelineShaderStageCreateInfo() const
 {
 	std::vector<vk::PipelineShaderStageCreateInfo>
-		pipelineShaderStageCreateInfos = {
-			vertShader->getPipelineShaderCreateInfo(),
-			fragShader->getPipelineShaderCreateInfo()
-		};
+		pipelineShaderStageCreateInfos;
+
+	if (vertShader != nullptr)
+		pipelineShaderStageCreateInfos
+			.push_back(vertShader->getPipelineShaderCreateInfo());
+
+	if (fragShader != nullptr)
+		pipelineShaderStageCreateInfos
+		.push_back(fragShader->getPipelineShaderCreateInfo());
+
+	if (geoShader != nullptr)
+		pipelineShaderStageCreateInfos
+		.push_back(geoShader->getPipelineShaderCreateInfo());
+
+	if (tesShader != nullptr)
+		pipelineShaderStageCreateInfos
+		.push_back(tesShader->getPipelineShaderCreateInfo());
+
 	return pipelineShaderStageCreateInfos;
 }

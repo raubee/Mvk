@@ -97,6 +97,7 @@ void Texture2D::loadImage(const char* filename)
 	                      vk::ImageLayout::eTransferDstOptimal,
 	                      vk::ImageLayout::eShaderReadOnlyOptimal);
 
+	deallocateBuffer(allocator, stagingBuffer);
 	stbi_image_free(pixels);
 }
 

@@ -15,8 +15,6 @@ namespace mvk
 		BaseMaterialDescription description;
 
 	public:
-		BaseMaterial();
-
 		inline static BaseMaterialDescription defaultDescription{};
 
 		Texture2D albedo;

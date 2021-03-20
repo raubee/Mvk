@@ -195,7 +195,21 @@ void AppBase::createSwapchainFrames()
 void AppBase::createGraphicPipeline()
 {
 	const auto extent = swapchain.getSwapchainExtent();
-	graphicPipeline.init(device, renderPass, extent);
+	const auto objects = scene.getObjects();
+
+	std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos;
+
+	for (auto object : objects)
+	{
+		auto objectStageInfo = 
+			object->material->getPipelineShaderStageCreateInfo();
+
+		for (auto shaderStageCreateInfo : objectStageInfo)
+		{
+			shaderStageCreateInfos.push_back(shaderStageCreateInfo);
+		}
+	}
+	graphicPipeline.init(device, shaderStageCreateInfos, renderPass, extent);
 }
 
 void AppBase::createDescriptorSets()
@@ -287,13 +301,15 @@ void AppBase::setupSwapchainFramesCommandBuffers()
 
 		commandBuffer.setScissor(0, scissor);
 
-		if (scene.getObjects().size() > 0)
+		const auto objectCount = scene.getObjects().size();
+		if ( objectCount > 0)
 		{
 			const auto object = scene.getObjects().front();
 			const auto vertexBuffers = object->geometry->getVertexBuffers();
 			const auto indexBuffer = object->geometry->getIndexBuffer();
 
-			if (vertexBuffers.size() > 0)
+			const auto vertexBufferCount = vertexBuffers.size();
+			if ( vertexBufferCount > 0)
 			{
 				vk::DeviceSize offsets[] = {0};
 

@@ -3,21 +3,13 @@
 
 using namespace mvk;
 
-void GraphicPipeline::loadBaseMaterialShaders() const
-{
-	baseMaterial.loadShaders(device);
-}
-
 void GraphicPipeline::init(const vk::Device device,
+                           std::vector<vk::PipelineShaderStageCreateInfo>
+                           shaderStageCreateInfos,
                            RenderPass renderPass,
                            vk::Extent2D extent)
 {
 	this->device = device;
-
-	/** Material **/
-	loadBaseMaterialShaders();
-	auto pipelineShaderStageCreateInfos = baseMaterial.
-		getPipelineShaderStageCreateInfo();
 
 	/** Vertex Input State settings **/
 	auto bindingDescription = Vertex::getBindingDescription();
@@ -158,8 +150,8 @@ void GraphicPipeline::init(const vk::Device device,
 	const vk::PipelineCache pipelineCache;
 	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {
 		.stageCount =
-		static_cast<uint32_t>(pipelineShaderStageCreateInfos.size()),
-		.pStages = pipelineShaderStageCreateInfos.data(),
+		static_cast<uint32_t>(shaderStageCreateInfos.size()),
+		.pStages = shaderStageCreateInfos.data(),
 		.pVertexInputState = &pipelineVertexInputStateCreateInfo,
 		.pInputAssemblyState = &pipelineInputAssemblyStateCreateInfo,
 		.pViewportState = &pipelineViewportStateCreateInfo,

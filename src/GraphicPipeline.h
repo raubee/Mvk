@@ -12,12 +12,11 @@ namespace mvk
 		vk::DescriptorSetLayout descriptorSetLayout;
 		vk::PipelineLayout pipelineLayout;
 
-		BaseMaterial baseMaterial;
-
-		void loadBaseMaterialShaders() const;
-
 	public:
-		void init(vk::Device device, RenderPass renderPass,
+		void init(vk::Device device,
+		          std::vector<vk::PipelineShaderStageCreateInfo>
+		          shaderStageCreateInfos,
+		          RenderPass renderPass,
 		          vk::Extent2D extent);
 		void release();
 

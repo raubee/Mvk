@@ -7,8 +7,6 @@ Geometry::Geometry(std::vector<Vertex>* vertices,
 {
 	this->vertices = vertices;
 	this->indices = indices;
-
-	vertexBuffers.resize(1);
 }
 
 void Geometry::load(const vma::Allocator allocator,
@@ -27,7 +25,11 @@ void Geometry::load(const vma::Allocator allocator,
 
 void Geometry::release()
 {
-	deallocateBuffer(allocator, vertexBuffers[0]);
+	for (const auto vertexBuffer : vertexBuffers)
+	{
+		deallocateBuffer(allocator, vertexBuffer);
+	}
+
 	deallocateBuffer(allocator, indexBuffer);
 }
 
@@ -44,7 +46,7 @@ void Geometry::createVertexBufferObject()
 	                   size);
 	deallocateBuffer(allocator, stagingVertexBuffer);
 
-	this->vertexBuffers[0] = vertexBuffer;
+	this->vertexBuffers.push_back(vertexBuffer);
 }
 
 void Geometry::createIndexBuffersObject()
