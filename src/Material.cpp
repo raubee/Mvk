@@ -3,9 +3,7 @@
 
 using namespace mvk;
 
-Material::Material(const vk::Device device,
-                   const vma::Allocator allocator,
-                   Shader* vertShader,
+Material::Material(Shader* vertShader,
                    Shader* fragShader,
                    Shader* geoShader,
                    Shader* tesShader)
@@ -16,27 +14,12 @@ Material::Material(const vk::Device device,
 	this->tesShader = tesShader;
 }
 
-vk::DescriptorSetLayout Material::getDescriptorSetLayout(
-	const vk::Device device)
+void Material::init(const vk::Device device, vma::Allocator allocator)
 {
-	/** Descriptor Set layout **/
-	const vk::DescriptorSetLayoutBinding uniformBufferLayoutBinding = {
-		.binding = 0,
-		.descriptorType = vk::DescriptorType::eUniformBuffer,
-		.descriptorCount = 1,
-		.stageFlags = vk::ShaderStageFlagBits::eVertex
-	};
-
-	std::array<vk::DescriptorSetLayoutBinding, 1> layoutBindings
-		= {uniformBufferLayoutBinding};
-
-	const vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
-		.bindingCount = static_cast<uint32_t>(layoutBindings.size()),
-		.pBindings = layoutBindings.data()
-	};
-
-	return device.createDescriptorSetLayout(
-		descriptorSetLayoutCreateInfo);
+	createDescriptorSetLayout(device);
+	createDescriptorPool(device);
+	createDescriptorSets(device);
+	updateDescriptorSets(device);
 }
 
 void Material::release(const vk::Device device)

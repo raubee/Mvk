@@ -12,26 +12,21 @@ namespace mvk
 
 	class BaseMaterial : public Material
 	{
-		BaseMaterialDescription description;
-
 		inline static BaseMaterialDescription defaultDescription{
 			.albedo = nullptr
 		};
 
 	public:
 		BaseMaterial(vk::Device device,
-		             vma::Allocator allocator,
 		             BaseMaterialDescription description = defaultDescription);
 
 		Texture2D* albedo;
 
-		void init(vk::Device device, vma::Allocator allocator,
-		          uint32_t size) override;
-		void createDescriptorPool(vk::Device device, uint32_t size);
-		void writeDescriptorSet(vk::Device device,
-		                        vk::DescriptorSet descriptorSet);
-		vk::DescriptorSetLayout getDescriptorSetLayout(vk::Device device)
-		override;
+		void init(vk::Device device, vma::Allocator allocator) override;
+		void createDescriptorPool(vk::Device device) override;
+		void updateDescriptorSets(vk::Device device) override;
+		void createDescriptorSetLayout(vk::Device device) override;
+		void createDescriptorSets(vk::Device device) override;
 		void release(vk::Device device) override;
 	};
 }

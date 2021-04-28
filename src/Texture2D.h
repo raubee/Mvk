@@ -13,15 +13,16 @@ namespace mvk
 		alloc::Image image;
 		vk::ImageView imageView;
 		vk::Sampler sampler;
-		
-	public:
-		Texture2D(const char* path, vk::Format format);
 
 		void createImageView(vk::Device device);
 		void createSampler(vk::Device device);
-
-		void release(vk::Device device, vma::Allocator allocator) const;
 		void cleanPixels() const;
+
+	public:
+		Texture2D(const char* path, vk::Format format);
+
+		void init(vk::Device device, alloc::Image image);
+		void release(vk::Device device, vma::Allocator allocator) const;
 
 		vk::Sampler getSampler() const { return sampler; }
 		vk::ImageView getImageView() const { return imageView; }
@@ -30,10 +31,5 @@ namespace mvk
 		uint32_t getWidth() const { return width; }
 		uint32_t getHeight() const { return height; }
 		vk::Format getFormat() const { return format;  }
-
-		void setImage(const alloc::Image image)
-		{
-			this->image = image;
-		}
 	};
 }

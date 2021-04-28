@@ -22,6 +22,9 @@
     <None Include="shaders\shader.vert">
       <Filter>Fichiers de ressources</Filter>
     </None>
+    <None Include="shaders\shader-norm.frag">
+      <Filter>Fichiers de ressources</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\AppBase.cpp">
@@ -48,9 +51,6 @@
     <ClCompile Include="src\Mesh.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
-    <ClCompile Include="src\ObjViewer.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
     <ClCompile Include="src\RenderPass.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
@@ -69,10 +69,13 @@
     <ClCompile Include="src\VulkanVma.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
-    <ClCompile Include="src\GraphicPipeline.cpp">
+    <ClCompile Include="src\Scene.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
-    <ClCompile Include="src\Scene.cpp">
+    <ClCompile Include="src\NormalMaterial.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\GraphicPipeline.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
   </ItemGroup>
@@ -132,6 +135,12 @@
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
     <ClInclude Include="src\VulkanVma.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="src\NormalMaterial.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="src\MultiViewer.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
     <ClInclude Include="src\GraphicPipeline.h">

@@ -1,16 +1,13 @@
 #pragma once
 #include "Shader.h"
 #include "VulkanVma.h"
-#include "GraphicPipeline.h"
 
 namespace mvk
 {
 	class Material
 	{
-		GraphicPipeline* pipeline;
-
-
 	protected:
+
 		Shader* vertShader;
 		Shader* fragShader;
 		Shader* geoShader;
@@ -19,30 +16,46 @@ namespace mvk
 		vk::Extent2D extent;
 		vk::CommandPool commandPool;
 		vk::DescriptorPool descriptorPool;
+		vk::DescriptorSetLayout descriptorSetLayout;
+		std::vector<vk::DescriptorSet> descriptorSets;
 
 	public:
-		Material(vk::Device device, vma::Allocator allocator,
-		         Shader* vertShader, Shader* fragShader,
+		Material(Shader* vertShader, Shader* fragShader,
 		         Shader* geoShader = nullptr, Shader* tesShader = nullptr);
 
-		virtual void init(vk::Device device, vma::Allocator allocator,
-		                  uint32_t size)
+		virtual void init(vk::Device device, vma::Allocator allocator);
+
+		virtual void createDescriptorPool(vk::Device device)
 		{
 		}
 
-		virtual vk::DescriptorSetLayout getDescriptorSetLayout(
-			vk::Device device);
+		virtual void createDescriptorSetLayout(vk::Device device)
+		{
+		}
+
+		virtual void createDescriptorSets(vk::Device device)
+		{
+		}
+
+		virtual void updateDescriptorSets(vk::Device device)
+		{
+		}
 
 		virtual void release(vk::Device device);
 
 		std::vector<vk::PipelineShaderStageCreateInfo>
 		getPipelineShaderStageCreateInfo() const;
 
-		void setGraphicPipeline(GraphicPipeline* pipeline)
+		vk::DescriptorSetLayout getDescriptorSetLayout() const
 		{
-			this->pipeline = pipeline;
+			return descriptorSetLayout;
 		}
 
-		GraphicPipeline* getGraphicPipeline() { return pipeline; }
+		vk::DescriptorSet getDescriptorSet(const int index) const
+		{
+			if (descriptorSets.size() <= index) return nullptr;
+
+			return descriptorSets[index];
+		}
 	};
 }

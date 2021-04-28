@@ -1,24 +1,22 @@
 #pragma once
 #include "Geometry.h"
-#include "BaseMaterial.h"
+#include "Material.h"
+#include "GraphicPipeline.h"
 
 namespace mvk
 {
 	class Mesh
 	{
-		std::vector<vk::DescriptorSet> descriptorSets;
 
 	public:
+
 		Geometry* geometry;
 		Material* material;
+		GraphicPipeline* graphicPipeline;
 
-		Mesh(Geometry* geometry, Material* material);
+		Mesh(Geometry* geometry, Material* material,
+		     GraphicPipeline* graphicPipeline);
 
 		void release(vk::Device device, vma::Allocator allocator) const;
-
-		vk::DescriptorSet getDescriptorSet(const int i)
-		{
-			return descriptorSets[i];
-		}
 	};
 }

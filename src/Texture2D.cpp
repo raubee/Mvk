@@ -22,6 +22,15 @@ Texture2D::Texture2D(const char* path, const vk::Format format)
 	this->format = format;
 }
 
+void Texture2D::init(const vk::Device device, const alloc::Image image)
+{
+	this->image = image;
+
+	createImageView(device);
+	createSampler(device);
+	cleanPixels();
+}
+
 void Texture2D::createImageView(const vk::Device device)
 {
 	const vk::ImageViewCreateInfo imageViewCreateInfo = {

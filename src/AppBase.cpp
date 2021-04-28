@@ -12,8 +12,6 @@ static alloc::Buffer createGpuIndexBuffer(vma::Allocator allocator,
 AppBase::AppBase(const Context context, const vk::SurfaceKHR surface)
 	: needResize(false)
 {
-	graphicPipelines.resize(0);
-
 	this->instance = context.getInstance();
 	this->physicalDevice = context.getPhysicalDevice();
 	this->device = context.getDevice();
@@ -39,15 +37,16 @@ AppBase::AppBase(const Context context, const vk::SurfaceKHR surface)
 	updateSwapchain();
 
 	startTime = std::chrono::high_resolution_clock::now();
+
+	const auto swapchainSize =
+		static_cast<uint32_t>(swapchain.getSwapchainSwainSize());
+	const auto swapchainExtent = swapchain.getSwapchainExtent();
+	scene.init(device, allocator, swapchainSize, swapchainExtent);
 }
 
 void AppBase::release()
 {
-	for (auto object : scene.getObjects())
-	{
-		if (object != nullptr)
-			object->release(device, allocator);
-	}
+	scene.release(device, allocator);
 
 	cleanupSwapchain();
 
@@ -55,8 +54,6 @@ void AppBase::release()
 	device.destroyCommandPool(commandPool);
 	device.destroySemaphore(imageAvailableSemaphore);
 	device.destroySemaphore(renderFinishedSemaphore);
-
-	release();
 }
 
 void AppBase::waitIdle() const
@@ -137,6 +134,7 @@ void AppBase::setSwapchainDirty()
 void AppBase::updateSwapchain()
 {
 	device.waitIdle();
+
 	cleanupSwapchain();
 	createSwapchain();
 	createRenderPass();
@@ -173,29 +171,13 @@ void AppBase::createRenderPass()
 {
 	const auto swapchainFormat = swapchain.getSwapchainFormat();
 	const auto depthFormat = swapchain.getDepthFormat();
+
 	renderPass.create(device, swapchainFormat, depthFormat);
 }
 
 void AppBase::createSwapchainFrames()
 {
 	swapchain.createSwapchainFrames(device, renderPass.getRenderPass());
-}
-
-std::vector<vk::DescriptorSet> AppBase::createDescriptorSets(
-	const GraphicPipeline graphicPipeline,
-	const uint32_t size)
-{
-	const auto descriptorSetLayout = graphicPipeline.getDescriptorSetLayout();
-	std::vector<vk::DescriptorSetLayout> layouts(0, descriptorSetLayout);
-
-	const vk::DescriptorSetAllocateInfo allocateInfo{
-		.descriptorPool = descriptorPool,
-		.descriptorSetCount = static_cast<uint32_t>(size),
-		.pSetLayouts = layouts.data()
-	};
-
-	const auto descriptorSets = device.allocateDescriptorSets(allocateInfo);
-	return descriptorSets;
 }
 
 void AppBase::createCommandPool(const uint32_t queueFamily)
@@ -247,67 +229,72 @@ void AppBase::setupFrameCommandBuffer(const int index,
 	commandBuffer.beginRenderPass(renderPassBeginInfo,
 	                              vk::SubpassContents::eInline);
 
-	for (auto graphicPipeline : graphicPipelines)
+	const auto objects = scene.getObjects();
+
+	for (auto object : objects)
 	{
-		const auto objects = scene.getObjects();
+		const auto geometry = object->geometry;
+		const auto material = object->material;
+		const auto graphicPipeline = object->graphicPipeline;
+		const auto pipelineLayout = graphicPipeline->getPipelineLayout();
+		const auto pipeline = graphicPipeline->getPipeline();
 
-		for (auto object : objects)
+		std::vector<vk::DescriptorSet> descriptorSets = {
+			scene.getDescriptorSet(0)
+		};
+
+		const auto matDescriptorSet = material->getDescriptorSet(0);
+
+		if (matDescriptorSet)
 		{
-			const auto geometry = object->geometry;
-			const auto pipeline = graphicPipeline->getPipeline();
-			const auto pipelineLayout = graphicPipeline->getPipelineLayout();
+			descriptorSets.push_back(matDescriptorSet);
+		}
 
-			const std::array<vk::DescriptorSet, 2> descriptorSets = {
-				scene.getDescriptorSet(index),
-				object->getDescriptorSet(index)
-			};
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+		                           pipeline);
 
-			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-			                           pipeline);
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+		                                 pipelineLayout, 0,
+		                                 static_cast<uint32_t>(
+			                                 descriptorSets.size()),
+		                                 descriptorSets.data(), 0, nullptr);
 
-			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-			                                 pipelineLayout, 0,
-			                                 static_cast<uint32_t>(
-				                                 descriptorSets.size()),
-			                                 descriptorSets.data(), 0, nullptr);
+		vk::Viewport viewport = {
+			.x = 0.0f,
+			.y = 0.0f,
+			.width = static_cast<float>(swapchainExtent.width),
+			.height = static_cast<float>(swapchainExtent.height),
+			.minDepth = 0.0f,
+			.maxDepth = 1.0f
+		};
 
-			vk::Viewport viewport = {
-				.x = 0.0f,
-				.y = 0.0f,
-				.width = static_cast<float>(swapchainExtent.width),
-				.height = static_cast<float>(swapchainExtent.height),
-				.minDepth = 0.0f,
-				.maxDepth = 1.0f
-			};
+		commandBuffer.setViewport(0, viewport);
 
-			commandBuffer.setViewport(0, viewport);
+		vk::Rect2D scissor = {
+			.offset = {0, 0},
+			.extent = swapchainExtent
+		};
 
-			vk::Rect2D scissor = {
-				.offset = {0, 0},
-				.extent = swapchainExtent
-			};
+		commandBuffer.setScissor(0, scissor);
 
-			commandBuffer.setScissor(0, scissor);
+		const auto vertexBuffer = geometry->getVertexBuffer();
+		const auto indexBuffer = geometry->getIndexBuffer();
 
-			const auto vertexBuffer = geometry->getVertexBuffer();
-			const auto indexBuffer = geometry->getIndexBuffer();
+		vk::DeviceSize offsets[] = {0};
 
-			vk::DeviceSize offsets[] = {0};
+		commandBuffer.bindVertexBuffers(0, 1,
+		                                &vertexBuffer.buffer,
+		                                offsets);
 
-			commandBuffer.bindVertexBuffers(0, 1,
-			                                &vertexBuffer.buffer,
-			                                offsets);
+		if (indexBuffer.buffer)
+		{
+			const auto size = geometry->getIndexCount();
 
-			if (indexBuffer.buffer)
-			{
-				const auto size = geometry->getIndexCount();
+			commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
+			                              vk::IndexType::eUint16);
 
-				commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
-				                              vk::IndexType::eUint16);
-
-				commandBuffer.drawIndexed(static_cast<uint32_t>(size), 1, 0, 0,
-				                          0);
-			}
+			commandBuffer.drawIndexed(static_cast<uint32_t>(size), 1, 0, 0,
+			                          0);
 		}
 	}
 
@@ -328,24 +315,13 @@ void AppBase::cleanupSwapchain()
 	renderPass.release(device);
 }
 
-void AppBase::update() const
+void AppBase::update()
 {
 	const auto currentTime = std::chrono::high_resolution_clock::now();
 	const auto time = std::chrono::duration<float, std::chrono::seconds::period>
 		(currentTime - startTime).count();
-}
 
-void AppBase::loadTexture(Texture2D texture)
-{
-	const auto image = createTextureBufferObject(texture.getPixels(),
-	                                             texture.getWidth(),
-	                                             texture.getHeight(),
-	                                             texture.getFormat());
-
-	texture.setImage(image);
-	texture.createImageView(device);
-	texture.createSampler(device);
-	texture.cleanPixels();
+	scene.update(allocator, time, swapchain.getSwapchainExtent());
 }
 
 alloc::Buffer AppBase::createVertexBufferObject(
@@ -384,7 +360,7 @@ alloc::Buffer AppBase::createIndexBufferObject(
 alloc::Image AppBase::createTextureBufferObject(unsigned char* pixels,
                                                 const uint32_t width,
                                                 const uint32_t height,
-                                                const vk::Format format)
+                                                const vk::Format format) const
 {
 	const vk::DeviceSize imageSize = width * height * 4;
 	const vk::BufferCreateInfo bufferCreateInfo = {

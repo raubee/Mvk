@@ -16,7 +16,8 @@ namespace mvk
 			vk::RenderPass renderPass,
 			std::vector<vk::PipelineShaderStageCreateInfo>
 			shaderStageCreateInfos,
-			vk::DescriptorSetLayout descriptorSetLayout);
+			vk::DescriptorSetLayout* descriptorSetLayouts,
+			uint32_t descriptorLayoutsSize);
 		
 		void release(vk::Device device);
 

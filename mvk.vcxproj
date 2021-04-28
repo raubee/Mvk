@@ -138,6 +138,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include=".editorconfig" />
+    <None Include="shaders\shader-norm.frag" />
     <None Include="shaders\shader.frag" />
     <None Include="shaders\shader.vert" />
   </ItemGroup>
@@ -151,7 +152,7 @@
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Material.cpp" />
     <ClCompile Include="src\Mesh.cpp" />
-    <ClCompile Include="src\ObjViewer.cpp" />
+    <ClCompile Include="src\NormalMaterial.cpp" />
     <ClCompile Include="src\RenderPass.cpp" />
     <ClCompile Include="src\Scene.cpp" />
     <ClCompile Include="src\Shader.cpp" />
@@ -169,6 +170,8 @@
     <ClInclude Include="src\GraphicPipeline.h" />
     <ClInclude Include="src\Material.h" />
     <ClInclude Include="src\Mesh.h" />
+    <ClInclude Include="src\MultiViewer.h" />
+    <ClInclude Include="src\NormalMaterial.h" />
     <ClInclude Include="src\ObjViewer.h" />
     <ClInclude Include="src\RenderPass.h" />
     <ClInclude Include="src\Scene.h" />

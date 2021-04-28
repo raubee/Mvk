@@ -3,7 +3,6 @@
 #include "SwapChain.h"
 #include "Scene.h"
 #include "RenderPass.h"
-#include "GraphicPipeline.h"
 
 #include <chrono>
 
@@ -12,12 +11,12 @@ namespace mvk
 	class AppBase
 	{
 	protected:
+
 		Scene scene;
 		SwapChain swapchain;
 		vk::Device device;
 		vma::Allocator allocator;
 		RenderPass renderPass;
-		std::vector<GraphicPipeline*> graphicPipelines;
 
 		alloc::Buffer createVertexBufferObject(
 			std::vector<Vertex> vertices) const;
@@ -27,15 +26,12 @@ namespace mvk
 		alloc::Image createTextureBufferObject(unsigned char* pixels,
 		                                       uint32_t width,
 		                                       uint32_t height,
-		                                       vk::Format format);
-		void loadTexture(Texture2D texture);
+		                                       vk::Format format) const;
+
 		void setupCommandBuffers();
 
-		std::vector<vk::DescriptorSet> createDescriptorSets(
-			GraphicPipeline graphicPipeline,
-			uint32_t size);
-
 	private:
+
 		vk::Instance instance;
 		vk::PhysicalDevice physicalDevice;
 		vk::SurfaceKHR surface;
@@ -70,10 +66,12 @@ namespace mvk
 		void updateSwapchain();
 		void cleanupSwapchain();
 
-		void update() const;
+		void update();
 
 	public:
+
 		AppBase(Context context, vk::SurfaceKHR surface);
+
 		void release();
 		void waitIdle() const;
 		void drawFrame();

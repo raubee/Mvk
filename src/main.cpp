@@ -5,7 +5,8 @@
 #include <GLFW/glfw3native.h>
 
 //#include "SimpleViewer.h"
-#include "ObjViewer.h"
+//#include "ObjViewer.h"
+#include "MultiViewer.h"
 
 vk::SurfaceKHR getGlfwSurfaceKHR(mvk::Context context, GLFWwindow* window);
 static void
@@ -46,7 +47,10 @@ int main()
 	context.pickPhysicalDevice(createInfo);
 	context.createDevice(createInfo);
 
-	ObjViewer app(context, surface);
+	//SimpleViewer app(context, surface);
+	//ObjViewer app(context, surface);
+	MultiViewer app(context, surface);
+
 	glfwSetWindowUserPointer(window, &app);
 
 	while (!glfwWindowShouldClose(window))
@@ -57,7 +61,7 @@ int main()
 
 	app.waitIdle();
 	app.release();
-	
+
 	context.getInstance().destroySurfaceKHR(surface);
 	context.release();
 
@@ -87,11 +91,13 @@ vk::SurfaceKHR getGlfwSurfaceKHR(const mvk::Context context, GLFWwindow* window)
 
 void framebufferResizeCallback(GLFWwindow* window, int width, int height)
 {
-	const auto app =
-		reinterpret_cast<ObjViewer*>(glfwGetWindowUserPointer(window));
 	/*const auto app =
 		reinterpret_cast<SimpleViewer*>(glfwGetWindowUserPointer(window));*/
-	
+	/*const auto app =
+		reinterpret_cast<ObjViewer*>(glfwGetWindowUserPointer(window));*/
+	const auto app =
+		reinterpret_cast<MultiViewer*>(glfwGetWindowUserPointer(window));
+
 	while (width == 0 || height == 0)
 	{
 		glfwGetFramebufferSize(window, &width, &height);

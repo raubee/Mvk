@@ -15,6 +15,7 @@ namespace mvk
 		std::vector<Mesh*> meshes;
 
 		alloc::Buffer uniformBuffer;
+		vk::DescriptorSetLayout descriptorSetLayout;
 		vk::DescriptorPool descriptorPool;
 		std::vector<vk::DescriptorSet> descriptorSets;
 
@@ -24,18 +25,29 @@ namespace mvk
 		}
 
 		void init(vk::Device device,
-		                             vma::Allocator allocator,
-		                             uint32_t size);
+		          vma::Allocator allocator,
+		          uint32_t size,
+		          vk::Extent2D extent);
 
+		void update(vma::Allocator allocator, float time, vk::Extent2D extent);
+
+		void release(vk::Device device, vma::Allocator allocator);
+
+		void createDescriptorSetLayout(vk::Device device);
 		void createDescriptorPool(vk::Device device, uint32_t size);
 		void createDescriptorSets(vk::Device device, uint32_t size);
 		void createUniformBufferObject(vma::Allocator allocator);
-		void writeDescriptorSets(vk::Device device);
+		void updateDescriptorSets(vk::Device device);
 		void updateUniformBufferObject(vma::Allocator allocator, float time,
 		                               vk::Extent2D extent) const;
 
 		void addObject(Mesh* mesh) { meshes.push_back(mesh); }
 		std::vector<Mesh*> getObjects() const { return meshes; }
+
+		vk::DescriptorSetLayout getDescriptorSetLayout() const
+		{
+			return descriptorSetLayout;
+		}
 
 		vk::DescriptorSet getDescriptorSet(const int i)
 		{

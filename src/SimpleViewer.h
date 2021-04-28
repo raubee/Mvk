@@ -1,8 +1,7 @@
 #pragma once
 
 #include "AppBase.h"
-
-using namespace mvk;
+#include "NormalMaterial.h"
 
 class SimpleViewer : public mvk::AppBase
 {
@@ -10,7 +9,7 @@ public:
 	SimpleViewer(const mvk::Context context,
 	             const vk::SurfaceKHR surface): AppBase(context, surface)
 	{
-		const auto vertices = std::vector<Vertex>({
+		const auto vertices = std::vector<mvk::Vertex>({
 			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
 			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
 			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
@@ -29,17 +28,28 @@ public:
 
 		const auto vertexBuffer = createVertexBufferObject(vertices);
 		const auto indexBuffer = createIndexBufferObject(indices);
-		auto planeGeo = Geometry(vertexBuffer, vertices.size(),
+		auto planeGeo = mvk::Geometry(vertexBuffer, vertices.size(),
 		                         indexBuffer, indices.size());
 
-		const auto albedo = Texture2D("assets/textures/lena.jpg");
-		const BaseMaterialDescription baseMaterialDescription = {
-			.albedo = albedo
+		auto material = mvk::NormalMaterial(device);
+		material.init(device, allocator);
+
+		std::array<vk::DescriptorSetLayout, 1> descriptorSetLayouts = {
+		scene.getDescriptorSetLayout()
 		};
 
-		auto baseMaterial = BaseMaterial(nullptr);
-		const auto plane = new Mesh(&planeGeo, &baseMaterial);
+		mvk::GraphicPipeline graphicPipeline(device,
+			swapchain.getSwapchainExtent(),
+			renderPass.getRenderPass(),
+			material.getPipelineShaderStageCreateInfo(),
+			descriptorSetLayouts.data(),
+			static_cast<int32_t>(descriptorSetLayouts.
+				size()));
 
-		scene.addObject(plane);
+		auto plane = mvk::Mesh(&planeGeo, &material, &graphicPipeline);
+
+		scene.addObject(&plane);
+
+		setupCommandBuffers();
 	}
 };

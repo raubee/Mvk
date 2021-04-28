@@ -5,12 +5,51 @@ using namespace mvk;
 
 void Scene::init(const vk::Device device,
                  const vma::Allocator allocator,
-                 const uint32_t size)
+                 const uint32_t size,
+                 const vk::Extent2D extent)
 {
 	createUniformBufferObject(allocator);
+	updateUniformBufferObject(allocator, 0.0f, extent);
+	createDescriptorSetLayout(device);
 	createDescriptorPool(device, size);
 	createDescriptorSets(device, size);
-	writeDescriptorSets(device);
+	updateDescriptorSets(device);
+}
+
+void Scene::update(const vma::Allocator allocator, const float time,
+                   const vk::Extent2D extent)
+{
+	updateUniformBufferObject(allocator, time, extent);
+}
+
+void Scene::release(const vk::Device device, const vma::Allocator allocator)
+{
+	for (auto object : getObjects())
+	{
+		if (object != nullptr)
+			object->release(device, allocator);
+	}
+}
+
+void Scene::createDescriptorSetLayout(const vk::Device device)
+{
+	const vk::DescriptorSetLayoutBinding uniformBufferLayoutBinding = {
+		.binding = 0,
+		.descriptorType = vk::DescriptorType::eUniformBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eVertex
+	};
+
+	std::array<vk::DescriptorSetLayoutBinding, 1> layoutBindings
+		= {uniformBufferLayoutBinding};
+
+	const vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+		.bindingCount = static_cast<uint32_t>(layoutBindings.size()),
+		.pBindings = layoutBindings.data()
+	};
+
+	descriptorSetLayout = device.createDescriptorSetLayout(
+		descriptorSetLayoutCreateInfo);
 }
 
 void Scene::createUniformBufferObject(const vma::Allocator allocator)
@@ -49,13 +88,13 @@ void Scene::createDescriptorSets(const vk::Device device, const uint32_t size)
 	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo = {
 		.descriptorPool = descriptorPool,
 		.descriptorSetCount = size,
-		.pSetlayouts = descriptorSetLayouts.data()
+		.pSetLayouts = descriptorSetLayouts.data()
 	};
 
 	descriptorSets = device.allocateDescriptorSets(descriptorSetAllocateInfo);
 }
 
-void Scene::writeDescriptorSets(const vk::Device device)
+void Scene::updateDescriptorSets(const vk::Device device)
 {
 	for (auto descriptorSet : descriptorSets)
 	{
@@ -71,9 +110,11 @@ void Scene::writeDescriptorSets(const vk::Device device)
 			.dstSet = descriptorSet,
 			.dstBinding = 0,
 			.dstArrayElement = 0,
+			.descriptorCount = 1,
 			.descriptorType = vk::DescriptorType::eUniformBuffer,
-			.pBufferInfo = &descriptorBufferInfo
+			.pBufferInfo = &descriptorBufferInfo,
 		};
+
 		device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 	}
 }
