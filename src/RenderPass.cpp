@@ -2,12 +2,10 @@
 
 using namespace mvk;
 
-void RenderPass::init(const vk::Device device,
-                      const vk::Format colorFormat,
-                      const vk::Format depthFormat)
+void RenderPass::create(const vk::Device device,
+                        const vk::Format colorFormat,
+                        const vk::Format depthFormat)
 {
-	this->device = device;
-
 	/** Color Description **/
 	vk::AttachmentDescription colorAttachment = {
 		.format = colorFormat,
@@ -65,7 +63,7 @@ void RenderPass::init(const vk::Device device,
 	renderPass = device.createRenderPass(renderPassCreateInfo);
 }
 
-void RenderPass::release() const
+void RenderPass::release(const vk::Device device) const
 {
 	if (renderPass)
 		device.destroyRenderPass(renderPass);

@@ -3,30 +3,19 @@
 
 using namespace mvk;
 
-void SwapchainFrame::init(const vk::Device device,
-                          const vk::Image image,
-                          const vma::Allocator allocator,
-                          const vk::RenderPass renderPass,
-                          const vk::Format swapchainFormat,
-                          const vk::Extent2D swapchainExtent,
-                          const vk::ImageView depthImage)
+void SwapchainFrame::create(const vk::Device device,
+                            const vk::Image image,
+                            const vk::RenderPass renderPass,
+                            const vk::Format swapchainFormat,
+                            const vk::Extent2D swapchainExtent,
+                            const vk::ImageView depthImage)
 {
-	this->device = device;
-	this->allocator = allocator;
-	this->renderPass = renderPass;
-	this->image = image;
-	this->format = swapchainFormat;
-	this->extent = swapchainExtent;
-
-	createImageView(image);
-	createFramebuffer(depthImage);
-	createUniformBuffer();
+	createImageView(device, image, swapchainFormat);
+	createFramebuffer(device, depthImage, renderPass, swapchainExtent);
 }
 
-void SwapchainFrame::release()
+void SwapchainFrame::release(const vk::Device device) const
 {
-	deallocateBuffer(allocator, uniformBuffer);
-
 	if (framebuffer)
 		device.destroy(framebuffer);
 
@@ -34,7 +23,9 @@ void SwapchainFrame::release()
 		device.destroy(imageView);
 }
 
-void SwapchainFrame::createImageView(vk::Image image)
+void SwapchainFrame::createImageView(const vk::Device device,
+                                     vk::Image image,
+                                     vk::Format format)
 {
 	const auto imageViewCreateInfo = vk::ImageViewCreateInfo{
 		.image = image,
@@ -58,7 +49,10 @@ void SwapchainFrame::createImageView(vk::Image image)
 	imageView = device.createImageView(imageViewCreateInfo);
 }
 
-void SwapchainFrame::createFramebuffer(const vk::ImageView depthImageView)
+void SwapchainFrame::createFramebuffer(const vk::Device device,
+                                       const vk::ImageView depthImageView,
+                                       const vk::RenderPass renderPass,
+                                       const vk::Extent2D extent)
 {
 	std::array<vk::ImageView, 2> attachments = {imageView, depthImageView};
 
@@ -72,16 +66,4 @@ void SwapchainFrame::createFramebuffer(const vk::ImageView depthImageView)
 	};
 
 	framebuffer = device.createFramebuffer(framebufferCreateInfo);
-}
-
-void SwapchainFrame::createUniformBuffer()
-{
-	const auto size = sizeof(UniformBufferObject);
-
-	const vk::BufferCreateInfo bufferCreateInfo = {
-		.size = static_cast<vk::DeviceSize>(size),
-		.usage = vk::BufferUsageFlagBits::eUniformBuffer,
-	};
-
-	uniformBuffer = allocateCpuToGpuBuffer(allocator, bufferCreateInfo);
 }

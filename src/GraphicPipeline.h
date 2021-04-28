@@ -1,31 +1,31 @@
 #pragma once
-
-#include "RenderPass.h"
-#include "BaseMaterial.h"
+#include "VulkanVma.h"
 
 namespace mvk
 {
 	class GraphicPipeline
 	{
-		vk::Device device;
 		vk::Pipeline pipeline;
-		vk::DescriptorSetLayout descriptorSetLayout;
 		vk::PipelineLayout pipelineLayout;
+		vk::DescriptorSetLayout descriptorSetLayout;
 
 	public:
-		void init(vk::Device device,
-		          std::vector<vk::PipelineShaderStageCreateInfo>
-		          shaderStageCreateInfos,
-		          RenderPass renderPass,
-		          vk::Extent2D extent);
-		void release();
-
-		vk::Pipeline getPipeline() const { return pipeline; }
-		vk::PipelineLayout getPipelineLayout() const { return pipelineLayout; }
+		
+		GraphicPipeline(vk::Device device,
+			vk::Extent2D extent,
+			vk::RenderPass renderPass,
+			std::vector<vk::PipelineShaderStageCreateInfo>
+			shaderStageCreateInfos,
+			vk::DescriptorSetLayout descriptorSetLayout);
+		
+		void release(vk::Device device);
 
 		vk::DescriptorSetLayout getDescriptorSetLayout() const
 		{
 			return descriptorSetLayout;
 		}
+
+		vk::Pipeline getPipeline() const { return pipeline; }
+		vk::PipelineLayout getPipelineLayout() const { return pipelineLayout; }
 	};
 }

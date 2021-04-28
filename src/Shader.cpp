@@ -26,7 +26,6 @@ static std::vector<char> readFile(const std::string& filename)
 Shader::Shader(const vk::Device device, const std::string& filename,
                const vk::ShaderStageFlagBits stageFlagBits)
 {
-	this->device = device;
 	this->filename = filename;
 	this->stageFlagBits = stageFlagBits;
 
@@ -46,7 +45,7 @@ Shader::Shader(const vk::Device device, const std::string& filename,
 	};
 }
 
-void Shader::release() const
+void Shader::release(const vk::Device device) const
 {
 	if (shaderModule)
 		device.destroyShaderModule(shaderModule);

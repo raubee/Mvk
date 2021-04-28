@@ -6,17 +6,19 @@ namespace mvk
 {
 	class Mesh
 	{
+		std::vector<vk::DescriptorSet> descriptorSets;
+
 	public:
 		Geometry* geometry;
 		Material* material;
 
-		Mesh(Geometry* geometry, Material* material = new BaseMaterial);
+		Mesh(Geometry* geometry, Material* material);
 
-		void load(vma::Allocator allocator, vk::Device device,
-		          vk::CommandPool commandPool, vk::Queue transferQueue) const;
+		void release(vk::Device device, vma::Allocator allocator) const;
 
-		void release() const;
-
-		void writeDescriptorSet(vk::DescriptorSet descriptorSet);
+		vk::DescriptorSet getDescriptorSet(const int i)
+		{
+			return descriptorSets[i];
+		}
 	};
 }

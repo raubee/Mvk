@@ -7,36 +7,23 @@ namespace mvk
 {
 	class Geometry
 	{
-		vma::Allocator allocator;
-		vk::Device device;
-		vk::CommandPool commandPool;
-		vk::Queue transferQueue;
+		size_t verticesCount;
+		size_t indicesCount;
 
-		std::vector<Vertex>* vertices;
-		std::vector<uint16_t>* indices;
-
-		std::vector<AllocatedBuffer> vertexBuffers;
-		AllocatedBuffer indexBuffer;
-
-		void createVertexBufferObject();
-		void createIndexBuffersObject();
-		AllocatedBuffer createGpuVertexBuffer(vk::DeviceSize size) const;
-		AllocatedBuffer createGpuIndexBuffer(vk::DeviceSize size) const;
+		alloc::Buffer vertexBuffer;
+		alloc::Buffer indexBuffer;
 
 	public:
-		Geometry(std::vector<Vertex>* vertices, std::vector<uint16_t>* indices);
-		std::vector<Vertex>* getVertices() const { return vertices; }
-		std::vector<uint16_t>* getIndices() const { return indices; }
+		Geometry(alloc::Buffer vertexBuffer,
+		         size_t verticesCount,
+		         alloc::Buffer indexBuffer,
+		         size_t indicesCount);
 
-		std::vector<AllocatedBuffer> getVertexBuffers() const
-		{
-			return vertexBuffers;
-		}
+		alloc::Buffer getVertexBuffer() const { return vertexBuffer; }
+		alloc::Buffer getIndexBuffer() const { return indexBuffer; }
 
-		AllocatedBuffer getIndexBuffer() const { return indexBuffer; }
-
-		void load(vma::Allocator allocator, vk::Device device,
-		          vk::CommandPool commandPool, vk::Queue transferQueue);
-		void release();
+		size_t getVerticesCount() const { return verticesCount; }
+		size_t getIndexCount() const { return indicesCount; }
+		void release(vma::Allocator allocator) const;
 	};
 }

@@ -3,12 +3,9 @@
 
 class ObjViewer : public mvk::AppBase
 {
-	std::vector<mvk::Vertex> vertices;
-	std::vector<uint16_t> indices;
-
-	void loadObjFile();
+	void loadObjFile(std::vector<mvk::Vertex>& vertices,
+		std::vector<uint16_t>& indices) const;
 	
 public:
-	void setup(mvk::Context context, vk::SurfaceKHR surface)
-	override;
+	ObjViewer(mvk::Context context, vk::SurfaceKHR surface);
 };

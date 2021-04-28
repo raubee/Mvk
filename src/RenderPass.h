@@ -6,13 +6,14 @@ namespace mvk
 {
 	class RenderPass
 	{
-		vk::Device device;
 		vk::RenderPass renderPass;
 
 	public:
-		void init(vk::Device device, vk::Format colorFormat,
+		
+		void create(vk::Device device, vk::Format colorFormat,
 		          vk::Format depthFormat);
-		void release() const;
+
+		void release(vk::Device device) const;
 
 		vk::RenderPass getRenderPass() const { return renderPass; }
 	};

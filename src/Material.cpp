@@ -1,12 +1,13 @@
 #include "Material.h"
+#include "Vertex.h"
 
 using namespace mvk;
 
-Material::Material()
-{
-}
-
-Material::Material(Shader* vertShader, Shader* fragShader, Shader* geoShader,
+Material::Material(const vk::Device device,
+                   const vma::Allocator allocator,
+                   Shader* vertShader,
+                   Shader* fragShader,
+                   Shader* geoShader,
                    Shader* tesShader)
 {
 	this->vertShader = vertShader;
@@ -15,30 +16,42 @@ Material::Material(Shader* vertShader, Shader* fragShader, Shader* geoShader,
 	this->tesShader = tesShader;
 }
 
-void Material::load(const vma::Allocator allocator,
-                    const vk::Device device,
-                    const vk::CommandPool commandPool,
-                    const vk::Queue transferQueue)
+vk::DescriptorSetLayout Material::getDescriptorSetLayout(
+	const vk::Device device)
 {
-	this->allocator = allocator;
-	this->device = device;
-	this->commandPool = commandPool;
-	this->transferQueue = transferQueue;
+	/** Descriptor Set layout **/
+	const vk::DescriptorSetLayoutBinding uniformBufferLayoutBinding = {
+		.binding = 0,
+		.descriptorType = vk::DescriptorType::eUniformBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eVertex
+	};
+
+	std::array<vk::DescriptorSetLayoutBinding, 1> layoutBindings
+		= {uniformBufferLayoutBinding};
+
+	const vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+		.bindingCount = static_cast<uint32_t>(layoutBindings.size()),
+		.pBindings = layoutBindings.data()
+	};
+
+	return device.createDescriptorSetLayout(
+		descriptorSetLayoutCreateInfo);
 }
 
-void Material::release()
+void Material::release(const vk::Device device)
 {
 	if (vertShader != nullptr)
-		vertShader->release();
+		vertShader->release(device);
 
 	if (fragShader != nullptr)
-		fragShader->release();
+		fragShader->release(device);
 
 	if (geoShader != nullptr)
-		geoShader->release();
+		geoShader->release(device);
 
 	if (tesShader != nullptr)
-		tesShader->release();
+		tesShader->release(device);
 }
 
 std::vector<vk::PipelineShaderStageCreateInfo> Material::
@@ -53,15 +66,15 @@ getPipelineShaderStageCreateInfo() const
 
 	if (fragShader != nullptr)
 		pipelineShaderStageCreateInfos
-		.push_back(fragShader->getPipelineShaderCreateInfo());
+			.push_back(fragShader->getPipelineShaderCreateInfo());
 
 	if (geoShader != nullptr)
 		pipelineShaderStageCreateInfos
-		.push_back(geoShader->getPipelineShaderCreateInfo());
+			.push_back(geoShader->getPipelineShaderCreateInfo());
 
 	if (tesShader != nullptr)
 		pipelineShaderStageCreateInfos
-		.push_back(tesShader->getPipelineShaderCreateInfo());
+			.push_back(tesShader->getPipelineShaderCreateInfo());
 
 	return pipelineShaderStageCreateInfos;
 }

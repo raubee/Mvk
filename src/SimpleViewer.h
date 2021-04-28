@@ -2,13 +2,15 @@
 
 #include "AppBase.h"
 
+using namespace mvk;
+
 class SimpleViewer : public mvk::AppBase
 {
 public:
-	void setup(const mvk::Context context, const vk::SurfaceKHR surface)
-	override
+	SimpleViewer(const mvk::Context context,
+	             const vk::SurfaceKHR surface): AppBase(context, surface)
 	{
-		const auto vertices = new std::vector<mvk::Vertex>({
+		const auto vertices = std::vector<Vertex>({
 			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
 			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
 			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
@@ -20,23 +22,24 @@ public:
 			{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
 		});
 
-		const auto indices = new std::vector<uint16_t>({
+		const auto indices = std::vector<uint16_t>({
 			0, 1, 2, 2, 3, 0,
 			4, 5, 6, 6, 7, 4
 		});
 
-		const auto planeGeo = new mvk::Geometry(vertices, indices);
+		const auto vertexBuffer = createVertexBufferObject(vertices);
+		const auto indexBuffer = createIndexBufferObject(indices);
+		auto planeGeo = Geometry(vertexBuffer, vertices.size(),
+		                         indexBuffer, indices.size());
 
-		const mvk::BaseMaterialDescription baseMaterialDescription = {
-			.albedo = "assets/textures/lena.jpg"
+		const auto albedo = Texture2D("assets/textures/lena.jpg");
+		const BaseMaterialDescription baseMaterialDescription = {
+			.albedo = albedo
 		};
 
-		const auto baseMaterial = new mvk::BaseMaterial();
-		baseMaterial->setDescription(baseMaterialDescription);
-		const auto plane = new mvk::Mesh(planeGeo, baseMaterial);
+		auto baseMaterial = BaseMaterial(nullptr);
+		const auto plane = new Mesh(&planeGeo, &baseMaterial);
 
 		scene.addObject(plane);
-
-		AppBase::setup(context, surface);
 	}
 };

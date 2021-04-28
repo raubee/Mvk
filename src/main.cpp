@@ -24,8 +24,6 @@ int main()
 		&glfwExtensionsCount);
 
 	mvk::ContextCreationInfo createInfo;
-	//createInfo.setQueueFamilyPreference(
-	//	mvk::PreferredQueueFamilySettings::eGraphicTransferSeparated);
 
 #if (NDEBUG)
 	createInfo.addInstanceLayer("VK_LAYER_KHRONOS_validation");
@@ -48,10 +46,8 @@ int main()
 	context.pickPhysicalDevice(createInfo);
 	context.createDevice(createInfo);
 
-	ObjViewer app;
-	//SimpleViewer app;
+	ObjViewer app(context, surface);
 	glfwSetWindowUserPointer(window, &app);
-	app.setup(context, surface);
 
 	while (!glfwWindowShouldClose(window))
 	{
@@ -61,7 +57,7 @@ int main()
 
 	app.waitIdle();
 	app.release();
-
+	
 	context.getInstance().destroySurfaceKHR(surface);
 	context.release();
 
@@ -102,5 +98,5 @@ void framebufferResizeCallback(GLFWwindow* window, int width, int height)
 		glfwWaitEvents();
 	}
 
-	app->setFramebufferDirty();
+	app->setSwapchainDirty();
 }

@@ -2,35 +2,82 @@
 
 using namespace mvk;
 
-void BaseMaterial::load(const vma::Allocator allocator,
-                        const vk::Device device,
-                        const vk::CommandPool commandPool,
-                        const vk::Queue transferQueue)
+BaseMaterial::BaseMaterial(const vk::Device device,
+                           const vma::Allocator allocator,
+                           const BaseMaterialDescription description) :
+	Material(device,
+	         allocator,
+	         new Shader(device, "shaders/vert.spv",
+	                    vk::ShaderStageFlagBits::eVertex),
+	         new Shader(device, "shaders/frag.spv",
+	                    vk::ShaderStageFlagBits::eFragment)),
+	albedo(nullptr)
 {
-	Material::load(allocator, device, commandPool, transferQueue);
-
-	vertShader = new Shader(device, "shaders/vert.spv",
-		vk::ShaderStageFlagBits::eVertex);
-
-	fragShader = new Shader(device, "shaders/frag.spv",
-		vk::ShaderStageFlagBits::eFragment);
-
-	const auto albedoName = description.albedo.c_str();
-
-	albedo.load(
-		  allocator, device, commandPool, transferQueue, albedoName);
+	this->description = description;
 }
 
-void BaseMaterial::writeDescriptorSet(const vk::DescriptorSet descriptorSet)
+void BaseMaterial::init(const vk::Device device, vma::Allocator allocator,
+                        const uint32_t size)
 {
-	Material::writeDescriptorSet(descriptorSet);
+	createDescriptorPool(device, size);
+}
 
+void BaseMaterial::createDescriptorPool(const vk::Device device,
+                                        const uint32_t size)
+{
+	vk::DescriptorPoolSize descriptorPoolSize{
+		.type = vk::DescriptorType::eCombinedImageSampler,
+		.descriptorCount = size
+	};
+
+	const vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+		.maxSets = size,
+		.poolSizeCount = 1,
+		.pPoolSizes = &descriptorPoolSize
+	};
+
+	descriptorPool = device.createDescriptorPool(descriptorPoolCreateInfo);
+}
+
+vk::DescriptorSetLayout BaseMaterial::getDescriptorSetLayout(
+	const vk::Device device)
+{
+	/** Descriptor Set layout **/
+	vk::DescriptorSetLayoutBinding uniformBufferLayoutBinding = {
+		.binding = 0,
+		.descriptorType = vk::DescriptorType::eUniformBuffer,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eVertex
+	};
+
+	vk::DescriptorSetLayoutBinding albedoLayoutBinding = {
+		.binding = 1,
+		.descriptorType = vk::DescriptorType::eCombinedImageSampler,
+		.descriptorCount = 1,
+		.stageFlags = vk::ShaderStageFlagBits::eFragment
+	};
+
+	std::array<vk::DescriptorSetLayoutBinding, 2> layoutBindings
+		= {uniformBufferLayoutBinding, albedoLayoutBinding};
+
+	vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+		.bindingCount = static_cast<uint32_t>(layoutBindings.size()),
+		.pBindings = layoutBindings.data()
+	};
+
+	return device.createDescriptorSetLayout(
+		descriptorSetLayoutCreateInfo);
+}
+
+void BaseMaterial::writeDescriptorSet(const vk::Device device,
+                                      const vk::DescriptorSet descriptorSet)
+{
 	vk::DescriptorImageInfo albedoDescriptorImageInfo = {
-		.sampler = albedo.getSampler() ,
-		.imageView = albedo.getImageView(),
+		.sampler = albedo->getSampler(),
+		.imageView = albedo->getImageView(),
 		.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
 	};
-	
+
 	vk::WriteDescriptorSet writeDescriptorSet = {
 		.dstSet = descriptorSet,
 		.dstBinding = 1,
@@ -43,8 +90,7 @@ void BaseMaterial::writeDescriptorSet(const vk::DescriptorSet descriptorSet)
 	device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 }
 
-void BaseMaterial::release()
+void BaseMaterial::release(const vk::Device device)
 {
-	Material::release();
-	albedo.release();
+	Material::release(device);
 }

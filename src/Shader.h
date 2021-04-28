@@ -6,7 +6,6 @@ namespace mvk
 {
 	class Shader
 	{
-		vk::Device device;
 		std::string filename;
 		vk::ShaderModule shaderModule;
 		vk::ShaderStageFlagBits stageFlagBits;
@@ -16,7 +15,7 @@ namespace mvk
 		Shader(vk::Device device, const std::string& filename,
 		       vk::ShaderStageFlagBits stageFlagBits);
 
-		void release() const;
+		void release(vk::Device device) const;
 
 		vk::PipelineShaderStageCreateInfo getPipelineShaderCreateInfo() const
 		{

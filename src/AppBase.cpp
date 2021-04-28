@@ -1,17 +1,19 @@
 #include "AppBase.h"
-#include "UniformBufferObject.h"
 #include <set>
 #include <iostream>
 
-#define GLM_FORCE_RADIANS
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-
 using namespace mvk;
 
-void AppBase::setup(const Context context, const vk::SurfaceKHR surface)
+static alloc::Buffer createGpuVertexBuffer(vma::Allocator allocator,
+                                           vk::DeviceSize size);
+static alloc::Buffer createGpuIndexBuffer(vma::Allocator allocator,
+                                          vk::DeviceSize size);
+
+AppBase::AppBase(const Context context, const vk::SurfaceKHR surface)
+	: needResize(false)
 {
+	graphicPipelines.resize(0);
+
 	this->instance = context.getInstance();
 	this->physicalDevice = context.getPhysicalDevice();
 	this->device = context.getDevice();
@@ -19,8 +21,6 @@ void AppBase::setup(const Context context, const vk::SurfaceKHR surface)
 	this->presentQueue = context.getPresentQueue();
 	this->transferQueue = context.getTransferQueue();
 	this->surface = surface;
-
-	allocator = createVmaAllocator(context);
 
 	if (!physicalDevice.getSurfaceSupportKHR(
 		context.getGraphicsQueueFamilyIndex(), surface))
@@ -33,17 +33,9 @@ void AppBase::setup(const Context context, const vk::SurfaceKHR surface)
 		throw std::runtime_error("AppBase: Swapchain KHR can't be created!");
 	}
 
+	allocator = mvk::alloc::init(context);
 	createSemaphores();
 	createCommandPool(context.getGraphicsQueueFamilyIndex());
-
-	auto objects = scene.getObjects();
-
-	for (auto object : objects)
-	{
-		if (object != nullptr)
-			object->load(allocator, device, commandPool, transferQueue);
-	}
-
 	updateSwapchain();
 
 	startTime = std::chrono::high_resolution_clock::now();
@@ -54,16 +46,17 @@ void AppBase::release()
 	for (auto object : scene.getObjects())
 	{
 		if (object != nullptr)
-			object->release();
+			object->release(device, allocator);
 	}
 
 	cleanupSwapchain();
 
+	device.destroyDescriptorPool(descriptorPool);
 	device.destroyCommandPool(commandPool);
 	device.destroySemaphore(imageAvailableSemaphore);
 	device.destroySemaphore(renderFinishedSemaphore);
 
-	destroyVmaAllocator(allocator);
+	release();
 }
 
 void AppBase::waitIdle() const
@@ -91,7 +84,7 @@ void AppBase::drawFrame()
 	}
 
 	const auto currentSwapchainFrame = swapchain.getSwapchainFrame(imageIndex);
-	updateUniformBuffer(currentSwapchainFrame);
+	update();
 
 	vk::Semaphore waitSemaphores[] = {imageAvailableSemaphore};
 	vk::PipelineStageFlags waitStages[] = {
@@ -114,6 +107,7 @@ void AppBase::drawFrame()
 	result = graphicQueue.submit(1, &submitInfo, nullptr);
 
 	vk::SwapchainKHR swapchains[] = {swapchain.getSwapchain()};
+
 	const vk::PresentInfoKHR presentInfo{
 		.waitSemaphoreCount = 1,
 		.pWaitSemaphores = signalSemaphores,
@@ -135,7 +129,7 @@ void AppBase::drawFrame()
 	graphicQueue.waitIdle();
 }
 
-void AppBase::setFramebufferDirty()
+void AppBase::setSwapchainDirty()
 {
 	needResize = true;
 }
@@ -143,15 +137,10 @@ void AppBase::setFramebufferDirty()
 void AppBase::updateSwapchain()
 {
 	device.waitIdle();
-
 	cleanupSwapchain();
-
 	createSwapchain();
 	createRenderPass();
 	createSwapchainFrames();
-	createGraphicPipeline();
-	createDescriptorSets();
-	setupSwapchainFramesCommandBuffers();
 
 	needResize = false;
 
@@ -176,151 +165,142 @@ bool AppBase::checkSwapchainSupport()
 
 void AppBase::createSwapchain()
 {
-	swapchain.init(physicalDevice, device, commandPool, allocator,
-	               transferQueue, surface);
+	swapchain.create(physicalDevice, device, allocator, commandPool,
+	                 transferQueue, surface);
 }
 
 void AppBase::createRenderPass()
 {
 	const auto swapchainFormat = swapchain.getSwapchainFormat();
 	const auto depthFormat = swapchain.getDepthFormat();
-	renderPass.init(device, swapchainFormat, depthFormat);
+	renderPass.create(device, swapchainFormat, depthFormat);
 }
 
 void AppBase::createSwapchainFrames()
 {
-	swapchain.createSwapchainFrames(renderPass.getRenderPass());
+	swapchain.createSwapchainFrames(device, renderPass.getRenderPass());
 }
 
-void AppBase::createGraphicPipeline()
-{
-	const auto extent = swapchain.getSwapchainExtent();
-	const auto objects = scene.getObjects();
-
-	std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos;
-
-	for (auto object : objects)
-	{
-		auto objectStageInfo = 
-			object->material->getPipelineShaderStageCreateInfo();
-
-		for (auto shaderStageCreateInfo : objectStageInfo)
-		{
-			shaderStageCreateInfos.push_back(shaderStageCreateInfo);
-		}
-	}
-	graphicPipeline.init(device, shaderStageCreateInfos, renderPass, extent);
-}
-
-void AppBase::createDescriptorSets()
+std::vector<vk::DescriptorSet> AppBase::createDescriptorSets(
+	const GraphicPipeline graphicPipeline,
+	const uint32_t size)
 {
 	const auto descriptorSetLayout = graphicPipeline.getDescriptorSetLayout();
-	swapchain.createDescriptorSets(descriptorSetLayout);
+	std::vector<vk::DescriptorSetLayout> layouts(0, descriptorSetLayout);
 
-	auto objects = scene.getObjects();
+	const vk::DescriptorSetAllocateInfo allocateInfo{
+		.descriptorPool = descriptorPool,
+		.descriptorSetCount = static_cast<uint32_t>(size),
+		.pSetLayouts = layouts.data()
+	};
 
-	for (auto swapchainFrame : swapchain.getSwapchainFrames())
-	{
-		const auto descriptorSet = swapchainFrame.getDescriptorSet();
-
-		for (auto object : objects)
-		{
-			if (object != nullptr)
-				object->writeDescriptorSet(descriptorSet);
-		}
-	}
+	const auto descriptorSets = device.allocateDescriptorSets(allocateInfo);
+	return descriptorSets;
 }
 
-void AppBase::createCommandPool(const uint32_t graphicsQueueFamilyIndex)
+void AppBase::createCommandPool(const uint32_t queueFamily)
 {
 	const vk::CommandPoolCreateInfo commandPoolCreateInfo = {
-		.queueFamilyIndex = graphicsQueueFamilyIndex
+		.queueFamilyIndex = queueFamily
 	};
 
 	commandPool = device.createCommandPool(commandPoolCreateInfo);
 }
 
-void AppBase::setupSwapchainFramesCommandBuffers()
+void AppBase::setupCommandBuffers()
 {
-	swapchain.createSwapchainFramesCommandBuffers();
+	swapchain.createCommandBuffers(device, commandPool);
+	auto frames = swapchain.getSwapchainFrames();
 
-	for (const auto swapchainFrame : swapchain.getSwapchainFrames())
+	for (auto i = 0; i < frames.size(); i++)
 	{
-		auto commandBuffer = swapchainFrame.getCommandBuffer();
-		auto framebuffer = swapchainFrame.getFramebuffer();
-		auto swapchainExtent = swapchain.getSwapchainExtent();
+		setupFrameCommandBuffer(i, frames[i]);
+	}
+}
 
-		auto j = 0;
+void AppBase::setupFrameCommandBuffer(const int index,
+                                      const SwapchainFrame swapchainFrame)
+{
+	const auto commandBuffer = swapchainFrame.getCommandBuffer();
+	const auto framebuffer = swapchainFrame.getFramebuffer();
+	const auto swapchainExtent = swapchain.getSwapchainExtent();
 
-		const vk::CommandBufferBeginInfo commandBufferBeginInfo{};
-		commandBuffer.begin(commandBufferBeginInfo);
+	const vk::CommandBufferBeginInfo commandBufferBeginInfo{};
+	commandBuffer.begin(commandBufferBeginInfo);
 
-		const std::array<float,4> clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-		std::array<vk::ClearValue, 2> clearValues{};
-		clearValues[0].setColor(clearColor);
-		clearValues[1].setDepthStencil({ 1.0f, 0 });
-		
-		const vk::RenderPassBeginInfo renderPassBeginInfo = {
-			.renderPass = renderPass.getRenderPass(),
-			.framebuffer = framebuffer,
-			.renderArea = {
-				.offset = {0, 0},
-				.extent = swapchainExtent
-			},
-			.clearValueCount = static_cast<uint32_t>(clearValues.size()),
-			.pClearValues = clearValues.data()
-		};
+	const std::array<float, 4> clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+	std::array<vk::ClearValue, 2> clearValues{};
+	clearValues[0].setColor(clearColor);
+	clearValues[1].setDepthStencil({1.0f, 0});
 
-		commandBuffer.beginRenderPass(renderPassBeginInfo,
-		                              vk::SubpassContents::eInline);
-
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-		                           graphicPipeline.getPipeline());
-
-		const auto descriptorSet = swapchainFrame.getDescriptorSet();
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-		                                 graphicPipeline.
-		                                 getPipelineLayout(), 0, 1,
-		                                 &descriptorSet, 0, nullptr);
-
-		vk::Viewport viewport = {
-			.x = 0.0f,
-			.y = 0.0f,
-			.width = static_cast<float>(swapchainExtent.width),
-			.height = static_cast<float>(swapchainExtent.height),
-			.minDepth = 0.0f,
-			.maxDepth = 1.0f
-		};
-
-		commandBuffer.setViewport(0, viewport);
-
-		vk::Rect2D scissor = {
+	const vk::RenderPassBeginInfo renderPassBeginInfo = {
+		.renderPass = renderPass.getRenderPass(),
+		.framebuffer = framebuffer,
+		.renderArea = {
 			.offset = {0, 0},
 			.extent = swapchainExtent
-		};
+		},
+		.clearValueCount = static_cast<uint32_t>(clearValues.size()),
+		.pClearValues = clearValues.data()
+	};
 
-		commandBuffer.setScissor(0, scissor);
+	commandBuffer.beginRenderPass(renderPassBeginInfo,
+	                              vk::SubpassContents::eInline);
 
-		const auto objectCount = scene.getObjects().size();
-		if ( objectCount > 0)
+	for (auto graphicPipeline : graphicPipelines)
+	{
+		const auto objects = scene.getObjects();
+
+		for (auto object : objects)
 		{
-			const auto object = scene.getObjects().front();
-			const auto vertexBuffers = object->geometry->getVertexBuffers();
-			const auto indexBuffer = object->geometry->getIndexBuffer();
+			const auto geometry = object->geometry;
+			const auto pipeline = graphicPipeline->getPipeline();
+			const auto pipelineLayout = graphicPipeline->getPipelineLayout();
 
-			const auto vertexBufferCount = vertexBuffers.size();
-			if ( vertexBufferCount > 0)
-			{
-				vk::DeviceSize offsets[] = {0};
+			const std::array<vk::DescriptorSet, 2> descriptorSets = {
+				scene.getDescriptorSet(index),
+				object->getDescriptorSet(index)
+			};
 
-				commandBuffer.bindVertexBuffers(0, 1,
-				                                &vertexBuffers.at(0).buffer,
-				                                offsets);
-			}
+			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+			                           pipeline);
+
+			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+			                                 pipelineLayout, 0,
+			                                 static_cast<uint32_t>(
+				                                 descriptorSets.size()),
+			                                 descriptorSets.data(), 0, nullptr);
+
+			vk::Viewport viewport = {
+				.x = 0.0f,
+				.y = 0.0f,
+				.width = static_cast<float>(swapchainExtent.width),
+				.height = static_cast<float>(swapchainExtent.height),
+				.minDepth = 0.0f,
+				.maxDepth = 1.0f
+			};
+
+			commandBuffer.setViewport(0, viewport);
+
+			vk::Rect2D scissor = {
+				.offset = {0, 0},
+				.extent = swapchainExtent
+			};
+
+			commandBuffer.setScissor(0, scissor);
+
+			const auto vertexBuffer = geometry->getVertexBuffer();
+			const auto indexBuffer = geometry->getIndexBuffer();
+
+			vk::DeviceSize offsets[] = {0};
+
+			commandBuffer.bindVertexBuffers(0, 1,
+			                                &vertexBuffer.buffer,
+			                                offsets);
 
 			if (indexBuffer.buffer)
 			{
-				const auto size = object->geometry->getIndices()->size();
+				const auto size = geometry->getIndexCount();
 
 				commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
 				                              vk::IndexType::eUint16);
@@ -329,11 +309,10 @@ void AppBase::setupSwapchainFramesCommandBuffers()
 				                          0);
 			}
 		}
-
-		commandBuffer.endRenderPass();
-		commandBuffer.end();
-		++j;
 	}
+
+	commandBuffer.endRenderPass();
+	commandBuffer.end();
 }
 
 void AppBase::createSemaphores()
@@ -343,32 +322,163 @@ void AppBase::createSemaphores()
 	renderFinishedSemaphore = device.createSemaphore(semaphoreCreateInfo);
 }
 
-void AppBase::updateUniformBuffer(const SwapchainFrame swapchainFrame)
+void AppBase::cleanupSwapchain()
+{
+	swapchain.release(device, allocator);
+	renderPass.release(device);
+}
+
+void AppBase::update() const
 {
 	const auto currentTime = std::chrono::high_resolution_clock::now();
 	const auto time = std::chrono::duration<float, std::chrono::seconds::period>
 		(currentTime - startTime).count();
-
-	const auto swapChainExtent = swapchain.getSwapchainExtent();
-
-	UniformBufferObject ubo{};
-	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
-	                        glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 1.0f),
-	                       glm::vec3(0.0f, 0.0f, 0.75f),
-	                       glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width /
-	                            static_cast<float>(swapChainExtent.height),
-	                            0.1f, 10.0f);
-	ubo.proj[1][1] *= -1;
-
-	const auto buffer = swapchainFrame.getUniformBuffer();
-	mapDataToBuffer(allocator, buffer, &ubo, sizeof ubo);
 }
 
-void AppBase::cleanupSwapchain()
+void AppBase::loadTexture(Texture2D texture)
 {
-	swapchain.release();
-	graphicPipeline.release();
-	renderPass.release();
+	const auto image = createTextureBufferObject(texture.getPixels(),
+	                                             texture.getWidth(),
+	                                             texture.getHeight(),
+	                                             texture.getFormat());
+
+	texture.setImage(image);
+	texture.createImageView(device);
+	texture.createSampler(device);
+	texture.cleanPixels();
+}
+
+alloc::Buffer AppBase::createVertexBufferObject(
+	std::vector<Vertex> vertices) const
+{
+	const auto size =
+		static_cast<vk::DeviceSize>(sizeof vertices.at(0) * vertices.
+			size());
+	const auto stagingVertexBuffer =
+		alloc::allocateStagingTransferBuffer(allocator, vertices.data(), size);
+	const auto vertexBuffer = createGpuVertexBuffer(allocator, size);
+	copyCpuToGpuBuffer(device, commandPool, transferQueue,
+	                   stagingVertexBuffer, vertexBuffer,
+	                   size);
+	alloc::deallocateBuffer(allocator, stagingVertexBuffer);
+
+	return vertexBuffer;
+}
+
+alloc::Buffer AppBase::createIndexBufferObject(
+	std::vector<uint16_t> indices) const
+{
+	const auto size =
+		static_cast<vk::DeviceSize>(sizeof indices.at(0) * indices.
+			size());
+	const auto stagingVertexBuffer =
+		alloc::allocateStagingTransferBuffer(allocator, indices.data(), size);
+	const auto indexBuffer = createGpuIndexBuffer(allocator, size);
+	alloc::copyCpuToGpuBuffer(device, commandPool, transferQueue,
+	                          stagingVertexBuffer, indexBuffer, size);
+	alloc::deallocateBuffer(allocator, stagingVertexBuffer);
+
+	return indexBuffer;
+}
+
+alloc::Image AppBase::createTextureBufferObject(unsigned char* pixels,
+                                                const uint32_t width,
+                                                const uint32_t height,
+                                                const vk::Format format)
+{
+	const vk::DeviceSize imageSize = width * height * 4;
+	const vk::BufferCreateInfo bufferCreateInfo = {
+		.size = imageSize,
+		.usage = vk::BufferUsageFlagBits::eTransferSrc
+	};
+
+	const auto stagingBuffer =
+		alloc::allocateMappedCpuToGpuBuffer(allocator, bufferCreateInfo,
+		                                    pixels);
+
+	const vk::Extent3D imageExtent = {
+		.width = width,
+		.height = height,
+		.depth = 1
+	};
+
+	const vk::ImageCreateInfo imageCreateInfo = {
+		.imageType = vk::ImageType::e2D,
+		.format = format,
+		.extent = imageExtent,
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = vk::SampleCountFlagBits::e1,
+		.tiling = vk::ImageTiling::eOptimal,
+		.usage = vk::ImageUsageFlagBits::eTransferDst |
+		vk::ImageUsageFlagBits::eSampled,
+		.sharingMode = vk::SharingMode::eExclusive,
+		.initialLayout = vk::ImageLayout::eUndefined,
+	};
+
+	const auto imageBuffer = alloc::allocateGpuOnlyImage(allocator,
+	                                                     imageCreateInfo);
+
+	const vk::BufferImageCopy bufferImageCopy = {
+		.bufferOffset = 0,
+		.bufferRowLength = 0,
+		.bufferImageHeight = 0,
+		.imageSubresource = {
+			.aspectMask = vk::ImageAspectFlagBits::eColor,
+			.mipLevel = 0,
+			.baseArrayLayer = 0,
+			.layerCount = 1,
+		},
+		.imageOffset = {0, 0},
+		.imageExtent = imageExtent,
+	};
+
+	alloc::transitionImageLayout(device, commandPool, graphicQueue,
+	                             imageBuffer.image, format,
+	                             vk::ImageLayout::eUndefined,
+	                             vk::ImageLayout::eTransferDstOptimal);
+
+	alloc::copyCpuBufferToGpuImage(device, commandPool, graphicQueue,
+	                               stagingBuffer, imageBuffer, bufferImageCopy);
+
+	alloc::transitionImageLayout(device, commandPool, graphicQueue,
+	                             imageBuffer.image, format,
+	                             vk::ImageLayout::eTransferDstOptimal,
+	                             vk::ImageLayout::eShaderReadOnlyOptimal);
+
+	deallocateBuffer(allocator, stagingBuffer);
+
+	return imageBuffer;
+}
+
+static alloc::Buffer createGpuVertexBuffer(const vma::Allocator allocator,
+                                           const vk::DeviceSize size)
+{
+	const vk::BufferCreateInfo bufferCreateInfo = {
+		.size = static_cast<vk::DeviceSize>(size),
+		.usage = vk::BufferUsageFlagBits::eTransferDst |
+		vk::BufferUsageFlagBits::eVertexBuffer,
+		.sharingMode = vk::SharingMode::eExclusive
+	};
+
+	const auto buffer =
+		alloc::allocateGpuOnlyBuffer(allocator, bufferCreateInfo);
+
+	return buffer;
+}
+
+static alloc::Buffer createGpuIndexBuffer(const vma::Allocator allocator,
+                                          const vk::DeviceSize size)
+{
+	const vk::BufferCreateInfo bufferCreateInfo = {
+		.size = static_cast<vk::DeviceSize>(size),
+		.usage = vk::BufferUsageFlagBits::eTransferDst |
+		vk::BufferUsageFlagBits::eIndexBuffer,
+		.sharingMode = vk::SharingMode::eExclusive
+	};
+
+	const auto buffer =
+		alloc::allocateGpuOnlyBuffer(allocator, bufferCreateInfo);
+
+	return buffer;
 }

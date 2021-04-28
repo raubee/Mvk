@@ -3,136 +3,25 @@
 
 using namespace mvk;
 
-void SwapChain::init(const vk::PhysicalDevice physicalDevice,
-                     const vk::Device device,
-                     const vk::CommandPool commandPool,
-                     const vma::Allocator allocator,
-                     const vk::Queue transferQueue,
-                     const vk::SurfaceKHR surface)
+void SwapChain::create(const vk::PhysicalDevice physicalDevice,
+                       const vk::Device device,
+                       const vma::Allocator allocator,
+                       const vk::CommandPool commandPool,
+                       const vk::Queue transferQueue,
+                       const vk::SurfaceKHR surface)
 {
-	this->physicalDevice = physicalDevice;
-	this->device = device;
-	this->commandPool = commandPool;
-	this->allocator = allocator;
-	this->transferQueue = transferQueue;
-	this->surface = surface;
-
-	createSwapchain();
-	createDepthImageView();
+	createSwapChainKHR(physicalDevice, device, surface);
+	createDepthImageView(device, allocator, commandPool, transferQueue);
 }
 
-void SwapChain::createSwapchainFramesCommandBuffers()
-{
-	const vk::CommandBufferAllocateInfo commandBufferAllocateInfo = {
-		.commandPool = commandPool,
-		.level = vk::CommandBufferLevel::ePrimary,
-		.commandBufferCount = static_cast<uint32_t>(swapchainSize)
-	};
-
-	commandBuffers = device.allocateCommandBuffers(commandBufferAllocateInfo);
-
-	auto i = 0;
-	for (const auto commandBuffer : commandBuffers)
-	{
-		swapchainFrames[i].setCommandBuffer(commandBuffer);
-		i++;
-	}
-}
-
-void SwapChain::createDescriptorPool()
-{
-	vk::DescriptorPoolSize descriptorPoolSize{
-		.type = vk::DescriptorType::eUniformBuffer,
-		.descriptorCount = static_cast<uint32_t>(swapchainSize)
-	};
-
-	const vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo = {
-		.maxSets = swapchainSize,
-		.poolSizeCount = 1,
-		.pPoolSizes = &descriptorPoolSize
-	};
-
-	descriptorPool = device.createDescriptorPool(descriptorPoolCreateInfo);
-}
-
-void SwapChain::createDescriptorSets(
-	const vk::DescriptorSetLayout descriptorSetLayout)
-{
-	createDescriptorPool();
-
-	std::vector<vk::DescriptorSetLayout> layouts(swapchainSize,
-	                                             descriptorSetLayout);
-
-	const vk::DescriptorSetAllocateInfo allocateInfo{
-		.descriptorPool = descriptorPool,
-		.descriptorSetCount = static_cast<uint32_t>(swapchainSize),
-		.pSetLayouts = layouts.data()
-	};
-
-	descriptorSets = device.allocateDescriptorSets(allocateInfo);
-
-	auto i = 0;
-	for (const auto descriptorSet : descriptorSets)
-	{
-		const vk::DescriptorBufferInfo descriptorBufferInfo = {
-			.buffer = swapchainFrames[i].getUniformBuffer().buffer,
-			.offset = 0,
-			.range = sizeof(UniformBufferObject)
-		};
-
-		const vk::WriteDescriptorSet writeDescriptorSet = {
-			.dstSet = descriptorSet,
-			.dstBinding = 0,
-			.dstArrayElement = 0,
-			.descriptorCount = 1,
-			.descriptorType = vk::DescriptorType::eUniformBuffer,
-			.pBufferInfo = &descriptorBufferInfo
-		};
-
-		device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
-		swapchainFrames[i].setDescriptorSet(descriptorSet);
-		i++;
-	}
-}
-
-void SwapChain::createSwapchainFrames(const vk::RenderPass renderPass)
-{
-	swapchainFrames.resize(swapchainSize);
-	const auto swapchainImages = device.getSwapchainImagesKHR(swapchain);
-
-	for (auto i = 0; i < swapchainFrames.size(); i++)
-	{
-		swapchainFrames[i].init(device, swapchainImages[i], allocator,
-		                        renderPass, swapchainFormat, swapchainExtent,
-		                        depthImageView);
-	}
-}
-
-void SwapChain::release()
-{
-	for (auto swapchainFrame : swapchainFrames)
-	{
-		swapchainFrame.release();
-	}
-
-	if (depthImageView)
-		device.destroyImageView(depthImageView);
-	
-	if (depthImage.image)
-		deallocateImage(allocator, depthImage);
-
-	if (descriptorPool)
-		device.destroyDescriptorPool(descriptorPool);
-
-	if (swapchain)
-		device.destroySwapchainKHR(swapchain);
-}
-
-void SwapChain::createSwapchain()
+void SwapChain::createSwapChainKHR(const vk::PhysicalDevice physicalDevice,
+                                   const vk::Device device,
+                                   const vk::SurfaceKHR surface)
 {
 	uint32_t queueFamilyIndices = 0;
-	const auto presentMode = selectSwapchainPresentMode();
-	const auto capabilities = getSwapchainCapabilities();
+	const auto presentMode =
+		selectSwapchainPresentMode(physicalDevice, surface);
+	const auto capabilities = getSwapchainCapabilities(physicalDevice, surface);
 
 	swapchainSize = capabilities.capabilities.minImageCount + 1;
 	swapchainExtent = capabilities.capabilities.currentExtent;
@@ -156,7 +45,60 @@ void SwapChain::createSwapchain()
 	swapchain = device.createSwapchainKHR(swapchainCreateInfoKhr);
 }
 
-void SwapChain::createDepthImageView()
+void SwapChain::createCommandBuffers(const vk::Device device,
+                                     const vk::CommandPool commandPool)
+{
+	const vk::CommandBufferAllocateInfo commandBufferAllocateInfo = {
+		.commandPool = commandPool,
+		.level = vk::CommandBufferLevel::ePrimary,
+		.commandBufferCount = static_cast<uint32_t>(swapchainSize)
+	};
+
+	commandBuffers = device.allocateCommandBuffers(commandBufferAllocateInfo);
+
+	auto i = 0;
+	for (const auto commandBuffer : commandBuffers)
+	{
+		swapchainFrames[i].setCommandBuffer(commandBuffer);
+		i++;
+	}
+}
+
+void SwapChain::createSwapchainFrames(const vk::Device device,
+                                      const vk::RenderPass renderPass)
+{
+	swapchainFrames.resize(swapchainSize);
+	const auto swapchainImages = device.getSwapchainImagesKHR(swapchain);
+
+	for (auto i = 0; i < swapchainFrames.size(); i++)
+	{
+		swapchainFrames[i].create(device, swapchainImages[i], renderPass,
+		                          swapchainFormat, swapchainExtent,
+		                          depthImageView);
+	}
+}
+
+void SwapChain::release(const vk::Device device, const vma::Allocator allocator)
+{
+	for (auto swapchainFrame : swapchainFrames)
+	{
+		swapchainFrame.release(device);
+	}
+
+	if (depthImageView)
+		device.destroyImageView(depthImageView);
+
+	if (depthImage.image)
+		mvk::alloc::deallocateImage(allocator, depthImage);
+
+	if (swapchain)
+		device.destroySwapchainKHR(swapchain);
+}
+
+void SwapChain::createDepthImageView(const vk::Device device,
+                                     const vma::Allocator allocator,
+                                     const vk::CommandPool commandPool,
+                                     const vk::Queue transferQueue)
 {
 	// TODO: Best appropriated format supported by the physical device
 	depthFormat = vk::Format::eD32Sfloat;
@@ -178,11 +120,12 @@ void SwapChain::createDepthImageView()
 		.initialLayout = vk::ImageLayout::eUndefined
 	};
 
-	depthImage = allocateGpuOnlyImage(allocator, imageCreateInfo);
-	transitionImageLayout(allocator, device, commandPool, transferQueue,
-	                      depthImage.image, depthFormat,
-	                      vk::ImageLayout::eUndefined,
-	                      vk::ImageLayout::eDepthStencilAttachmentOptimal);
+	depthImage = mvk::alloc::allocateGpuOnlyImage(allocator, imageCreateInfo);
+	mvk::alloc::transitionImageLayout(device, commandPool, transferQueue,
+	                                  depthImage.image, depthFormat,
+	                                  vk::ImageLayout::eUndefined,
+	                                  vk::ImageLayout::
+	                                  eDepthStencilAttachmentOptimal);
 
 	const vk::ImageViewCreateInfo imageViewCreateInfo = {
 		.image = depthImage.image,
@@ -206,7 +149,9 @@ void SwapChain::createDepthImageView()
 	depthImageView = device.createImageView(imageViewCreateInfo);
 }
 
-SurfaceCapabilitiesKHRBatch SwapChain::getSwapchainCapabilities() const
+SurfaceCapabilitiesKHRBatch SwapChain::getSwapchainCapabilities(
+	const vk::PhysicalDevice physicalDevice,
+	const vk::SurfaceKHR surface) const
 {
 	const auto capabilities =
 		physicalDevice.getSurfaceCapabilitiesKHR(surface);
@@ -231,7 +176,9 @@ vk::Format SwapChain::selectSwapchainFormat(
 	return (*f).format;
 }
 
-vk::PresentModeKHR SwapChain::selectSwapchainPresentMode() const
+vk::PresentModeKHR SwapChain::selectSwapchainPresentMode(
+	const vk::PhysicalDevice physicalDevice,
+	const vk::SurfaceKHR surface) const
 {
 	auto presentModes = physicalDevice.getSurfacePresentModesKHR(surface);
 

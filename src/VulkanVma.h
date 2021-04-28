@@ -2,15 +2,15 @@
 
 #include "Context.h"
 
-namespace mvk
+namespace mvk::alloc
 {
-	struct AllocatedBuffer
+	struct Buffer
 	{
 		vk::Buffer buffer;
 		vma::Allocation allocation;
 	};
 
-	struct AllocatedImage
+	struct Image
 	{
 		vk::Image image;
 		vma::Allocation allocation;
@@ -19,22 +19,21 @@ namespace mvk
 	/** Allocator using vma allocator : https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator **/
 	/** Hpp wrapper : https://github.com/malte-v/VulkanMemoryAllocator-Hpp **/
 	/*** VMA Allocator ***/
-
-	static vma::Allocator createVmaAllocator(const Context context)
+	static vma::Allocator init(const Context context)
 	{
-		const vma::AllocatorCreateInfo allocatorCreateInfo = {
+		vma::AllocatorCreateInfo allocatorCreateInfo = {
 			.physicalDevice = context.getPhysicalDevice(),
 			.device = context.getDevice(),
 			.instance = context.getInstance(),
 			.vulkanApiVersion = VK_API_VERSION_1_2
 		};
 
-		return createAllocator(allocatorCreateInfo);
+		return vma::createAllocator(allocatorCreateInfo);
 	}
 
-	static AllocatedBuffer allocateMappedCpuToGpuBuffer(
-		const vma::Allocator allocator,
-		const vk::BufferCreateInfo bufferCreateInfo, void* data)
+	static Buffer allocateMappedCpuToGpuBuffer(const vma::Allocator allocator,
+	                                           const vk::BufferCreateInfo
+	                                           bufferCreateInfo, void* data)
 	{
 		const vma::AllocationCreateInfo allocationCreateInfo = {
 			.flags = vma::AllocationCreateFlagBits::eMapped,
@@ -54,7 +53,7 @@ namespace mvk
 		return {result.first, result.second};
 	}
 
-	static AllocatedBuffer allocateCpuToGpuBuffer(
+	static Buffer allocateCpuToGpuBuffer(
 		const vma::Allocator allocator,
 		const vk::BufferCreateInfo bufferCreateInfo)
 	{
@@ -71,9 +70,9 @@ namespace mvk
 		return {result.first, result.second};
 	}
 
-	static AllocatedBuffer allocateGpuOnlyBuffer(const vma::Allocator allocator,
-	                                             const vk::BufferCreateInfo
-	                                             bufferCreateInfo)
+	static Buffer allocateGpuOnlyBuffer(
+		const vma::Allocator allocator,
+		const vk::BufferCreateInfo bufferCreateInfo)
 	{
 		const vma::AllocationCreateInfo allocationCreateInfo = {
 			.usage = vma::MemoryUsage::eGpuOnly
@@ -88,9 +87,9 @@ namespace mvk
 		return {result.first, result.second};
 	}
 
-	static AllocatedImage allocateGpuOnlyImage(const vma::Allocator allocator,
-	                                           const vk::ImageCreateInfo
-	                                           imageCreateInfo)
+	static Image allocateGpuOnlyImage(
+		const vma::Allocator allocator,
+		const vk::ImageCreateInfo imageCreateInfo)
 	{
 		const vma::AllocationCreateInfo allocationCreateInfo = {
 			.usage = vma::MemoryUsage::eGpuOnly
@@ -106,19 +105,19 @@ namespace mvk
 	}
 
 	static void deallocateBuffer(const vma::Allocator allocator,
-	                             const AllocatedBuffer buffer)
+	                             const Buffer buffer)
 	{
 		allocator.destroyBuffer(buffer.buffer, buffer.allocation);
 	}
 
 	static void deallocateImage(const vma::Allocator allocator,
-	                            const AllocatedImage image)
+	                            const Image image)
 	{
 		allocator.destroyImage(image.image, image.allocation);
 	}
 
 	static void mapDataToBuffer(const vma::Allocator allocator,
-	                            const AllocatedBuffer buffer,
+	                            const Buffer buffer,
 	                            void* data,
 	                            const size_t size
 	)
@@ -129,7 +128,7 @@ namespace mvk
 		allocator.unmapMemory(buffer.allocation);
 	}
 
-	static AllocatedBuffer allocateStagingTransferBuffer(
+	static Buffer allocateStagingTransferBuffer(
 		const vma::Allocator allocator,
 		void* data,
 		const vk::DeviceSize
@@ -187,12 +186,11 @@ namespace mvk
 		device.freeCommandBuffers(commandPool, 1, &commandBuffer);
 	}
 
-	static void copyCpuToGpuBuffer(const vma::Allocator allocator,
-	                               const vk::Device device,
+	static void copyCpuToGpuBuffer(const vk::Device device,
 	                               const vk::CommandPool commandPool,
 	                               const vk::Queue transferQueue,
-	                               const AllocatedBuffer src,
-	                               const AllocatedBuffer dst,
+	                               const Buffer src,
+	                               const Buffer dst,
 	                               const vk::DeviceSize size)
 	{
 		const auto commandBuffer =
@@ -208,12 +206,11 @@ namespace mvk
 		                         transferQueue);
 	}
 
-	static void copyCpuBufferToGpuImage(const vma::Allocator allocator,
-	                                    const vk::Device device,
+	static void copyCpuBufferToGpuImage(const vk::Device device,
 	                                    const vk::CommandPool commandPool,
 	                                    const vk::Queue transferQueue,
-	                                    const AllocatedBuffer src,
-	                                    const AllocatedImage dst,
+	                                    const Buffer src,
+	                                    const Image dst,
 	                                    const vk::BufferImageCopy
 	                                    bufferImageCopy)
 	{
@@ -222,7 +219,8 @@ namespace mvk
 
 
 		commandBuffer.copyBufferToImage(src.buffer, dst.image,
-		                                vk::ImageLayout::eTransferDstOptimal,
+		                                vk::ImageLayout::
+		                                eTransferDstOptimal,
 		                                1, &bufferImageCopy);
 
 		endOneTimeSubmitCommands(device, commandPool, commandBuffer,
@@ -230,7 +228,6 @@ namespace mvk
 	}
 
 	static void transitionImageLayout(
-		const vma::Allocator allocator,
 		const vk::Device device,
 		const vk::CommandPool commandPool,
 		const vk::Queue transferQueue,
@@ -253,33 +250,34 @@ namespace mvk
 		};
 
 
-		if (newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal) {
+		if (newLayout == vk::ImageLayout::eDepthStencilAttachmentOptimal)
+		{
 			imageMemoryBarrier.subresourceRange.aspectMask =
 				vk::ImageAspectFlagBits::eDepth;
 
 			//TODO: Add Stencil aspect flag if needed 
 			// if (hasStencilComponent(format)) {
-				/*imageMemoryBarrier.subresourceRange.aspectMask |= 
-					vk::ImageAspectFlagBits::eStencil;*/
+			/*imageMemoryBarrier.subresourceRange.aspectMask |=
+				vk::ImageAspectFlagBits::eStencil;*/
 			//}
 		}
-		else {
-			imageMemoryBarrier.subresourceRange.aspectMask = 
+		else
+		{
+			imageMemoryBarrier.subresourceRange.aspectMask =
 				vk::ImageAspectFlagBits::eColor;
 		}
 
-		
 		vk::PipelineStageFlags sourceStage;
 		vk::PipelineStageFlags destinationStage;
 
 		if (oldLayout == vk::ImageLayout::eUndefined)
 		{
-			imageMemoryBarrier.setSrcAccessMask(vk::AccessFlagBits::eNoneKHR);
+			imageMemoryBarrier.setSrcAccessMask(
+				vk::AccessFlagBits::eNoneKHR);
 			sourceStage = vk::PipelineStageFlagBits::eTopOfPipe;
 
 			if (newLayout == vk::ImageLayout::eTransferDstOptimal)
 			{
-				
 				imageMemoryBarrier.setDstAccessMask(
 					vk::AccessFlagBits::eTransferWrite);
 
@@ -323,19 +321,14 @@ namespace mvk
 	}
 
 	static void mapMemory(const vma::Allocator allocator,
-	                      const AllocatedBuffer buffer, void* data)
+	                      const Buffer buffer, void* data)
 	{
 		allocator.mapMemory(buffer.allocation, &data);
 	}
 
 	static void unmapMemory(const vma::Allocator allocator,
-	                        const AllocatedBuffer buffer)
+	                        const Buffer buffer)
 	{
 		allocator.unmapMemory(buffer.allocation);
 	}
-
-	static void destroyVmaAllocator(const vma::Allocator allocator)
-	{
-		allocator.destroy();
-	}
-}
+};

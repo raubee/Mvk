@@ -3,14 +3,14 @@
 
 using namespace mvk;
 
-void GraphicPipeline::init(const vk::Device device,
-                           std::vector<vk::PipelineShaderStageCreateInfo>
-                           shaderStageCreateInfos,
-                           RenderPass renderPass,
-                           vk::Extent2D extent)
+GraphicPipeline::GraphicPipeline(
+	vk::Device device,
+	vk::Extent2D extent,
+	vk::RenderPass renderPass,
+	std::vector<vk::PipelineShaderStageCreateInfo>
+	shaderStageCreateInfos,
+	vk::DescriptorSetLayout descriptorSetLayout)
 {
-	this->device = device;
-
 	/** Vertex Input State settings **/
 	auto bindingDescription = Vertex::getBindingDescription();
 	auto attributeDescriptions = Vertex::getAttributeDescriptions();
@@ -114,37 +114,12 @@ void GraphicPipeline::init(const vk::Device device,
 		.pDynamicStates = states.data()
 	};
 
-	/** Descriptor Set layout **/
-	vk::DescriptorSetLayoutBinding uniformBufferLayoutBinding = {
-		.binding = 0,
-		.descriptorType = vk::DescriptorType::eUniformBuffer,
-		.descriptorCount = 1,
-		.stageFlags = vk::ShaderStageFlagBits::eVertex
-	};
-
-	vk::DescriptorSetLayoutBinding albedoLayoutBinding = {
-		.binding = 1,
-		.descriptorType = vk::DescriptorType::eCombinedImageSampler,
-		.descriptorCount = 1,
-		.stageFlags = vk::ShaderStageFlagBits::eFragment
-	};
-
-	std::array<vk::DescriptorSetLayoutBinding, 2> layoutBindings
-		= {uniformBufferLayoutBinding, albedoLayoutBinding};
-
-	vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
-		.bindingCount = static_cast<uint32_t>(layoutBindings.size()),
-		.pBindings = layoutBindings.data()
-	};
-
-	descriptorSetLayout = device.createDescriptorSetLayout(
-		descriptorSetLayoutCreateInfo);
-
 	/** Pipeline layout **/
 	vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
 		.setLayoutCount = 1,
 		.pSetLayouts = &descriptorSetLayout
 	};
+
 	pipelineLayout = device.createPipelineLayout(pipelineLayoutCreateInfo);
 
 	const vk::PipelineCache pipelineCache;
@@ -161,7 +136,7 @@ void GraphicPipeline::init(const vk::Device device,
 		.pColorBlendState = &pipelineColorBlendStateCreateInfo,
 		.pDynamicState = &pipelineDynamicStateCreateInfo,
 		.layout = pipelineLayout,
-		.renderPass = renderPass.getRenderPass(),
+		.renderPass = renderPass,
 		.subpass = 0
 	};
 
@@ -179,7 +154,7 @@ void GraphicPipeline::init(const vk::Device device,
 	}
 }
 
-void GraphicPipeline::release()
+void GraphicPipeline::release(const vk::Device device)
 {
 	if (descriptorSetLayout)
 		device.destroy(descriptorSetLayout);

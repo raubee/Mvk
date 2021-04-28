@@ -8,22 +8,9 @@ Mesh::Mesh(Geometry* geometry, Material* material)
 	this->material = material;
 }
 
-void Mesh::load(const vma::Allocator allocator,
-                const vk::Device device,
-                const vk::CommandPool commandPool,
-                const vk::Queue transferQueue) const
+void Mesh::release(const vk::Device device,
+                   const vma::Allocator allocator) const
 {
-	this->geometry->load(allocator, device, commandPool, transferQueue);
-	this->material->load(allocator, device, commandPool, transferQueue);
-}
-
-void Mesh::release() const
-{
-	this->geometry->release();
-	this->material->release();
-}
-
-void Mesh::writeDescriptorSet(const vk::DescriptorSet descriptorSet)
-{
-	this->material->writeDescriptorSet(descriptorSet);
+	this->geometry->release(allocator);
+	this->material->release(device);
 }

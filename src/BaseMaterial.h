@@ -7,29 +7,31 @@ namespace mvk
 {
 	struct BaseMaterialDescription
 	{
-		std::string albedo;
+		Texture2D* albedo;
 	};
 
 	class BaseMaterial : public Material
 	{
 		BaseMaterialDescription description;
 
+		inline static BaseMaterialDescription defaultDescription{
+			.albedo = nullptr
+		};
+
 	public:
-		inline static BaseMaterialDescription defaultDescription{};
+		BaseMaterial(vk::Device device,
+		             vma::Allocator allocator,
+		             BaseMaterialDescription description = defaultDescription);
 
-		Texture2D albedo;
+		Texture2D* albedo;
 
-		void setDescription(const BaseMaterialDescription description)
-		{
-			this->description = description;
-		}
-
-		void load(vma::Allocator allocator, vk::Device device,
-		          vk::CommandPool commandPool,
-		          vk::Queue transferQueue) override;
-
-		void writeDescriptorSet(vk::DescriptorSet descriptorSet) override;
-		
-		void release() override;
+		void init(vk::Device device, vma::Allocator allocator,
+		          uint32_t size) override;
+		void createDescriptorPool(vk::Device device, uint32_t size);
+		void writeDescriptorSet(vk::Device device,
+		                        vk::DescriptorSet descriptorSet);
+		vk::DescriptorSetLayout getDescriptorSetLayout(vk::Device device)
+		override;
+		void release(vk::Device device) override;
 	};
 }
