@@ -1,13 +1,10 @@
-#pragma once
-
 #include "AppBase.h"
 #include "NormalMaterial.h"
 
 class SimpleViewer : public mvk::AppBase
 {
 public:
-	SimpleViewer(const mvk::Context context,
-	             const vk::SurfaceKHR surface): AppBase(context, surface)
+	SimpleViewer() : AppBase()
 	{
 		const auto vertices = std::vector<mvk::Vertex>({
 			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
@@ -28,23 +25,27 @@ public:
 
 		const auto vertexBuffer = createVertexBufferObject(vertices);
 		const auto indexBuffer = createIndexBufferObject(indices);
-		auto planeGeo = mvk::Geometry(vertexBuffer, vertices.size(),
-		                         indexBuffer, indices.size());
+		const auto verticesCount = static_cast<uint32_t>(vertices.size());
+		const auto indicesCount = static_cast<uint32_t>(indices.size());
+		auto planeGeo = mvk::Geometry(vertexBuffer, verticesCount,
+		                              indexBuffer, indicesCount);
 
 		auto material = mvk::NormalMaterial(device);
 		material.init(device, allocator);
 
 		std::array<vk::DescriptorSetLayout, 1> descriptorSetLayouts = {
-		scene.getDescriptorSetLayout()
+			scene.getDescriptorSetLayout()
 		};
 
 		mvk::GraphicPipeline graphicPipeline(device,
-			swapchain.getSwapchainExtent(),
-			renderPass.getRenderPass(),
-			material.getPipelineShaderStageCreateInfo(),
-			descriptorSetLayouts.data(),
-			static_cast<int32_t>(descriptorSetLayouts.
-				size()));
+		                                     swapchain.getSwapchainExtent(),
+		                                     renderPass.getRenderPass(),
+		                                     material.
+		                                     getPipelineShaderStageCreateInfo(),
+		                                     descriptorSetLayouts.data(),
+		                                     static_cast<int32_t>(
+			                                     descriptorSetLayouts.
+			                                     size()));
 
 		auto plane = mvk::Mesh(&planeGeo, &material, &graphicPipeline);
 
@@ -53,3 +54,11 @@ public:
 		setupCommandBuffers();
 	}
 };
+
+int main()
+{
+	SimpleViewer app;
+	app.run();
+	app.terminate();
+	return EXIT_SUCCESS;
+}

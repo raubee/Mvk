@@ -9,9 +9,44 @@ static alloc::Buffer createGpuVertexBuffer(vma::Allocator allocator,
 static alloc::Buffer createGpuIndexBuffer(vma::Allocator allocator,
                                           vk::DeviceSize size);
 
-AppBase::AppBase(const Context context, const vk::SurfaceKHR surface)
+static void
+framebufferResizeCallback(GLFWwindow* window, int width, int height);
+
+AppBase::AppBase()
 	: needResize(false)
 {
+	const auto appName = "Test";
+
+	glfwInit();
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+	window = glfwCreateWindow(600, 600, appName, nullptr, nullptr);
+	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
+	uint32_t glfwExtensionsCount = 0;
+	const auto glfwExtensions = glfwGetRequiredInstanceExtensions(
+		&glfwExtensionsCount);
+
+	mvk::ContextCreationInfo createInfo;
+
+#if (NDEBUG)
+	createInfo.addInstanceLayer("VK_LAYER_KHRONOS_validation");
+	createInfo.addInstanceLayer("VK_LAYER_LUNARG_monitor");
+	createInfo.addInstanceLayer("VK_LAYER_LUNARG_standard_validation");
+#endif
+
+	for (size_t i = 0; i < glfwExtensionsCount; i++)
+	{
+		createInfo.addInstanceExtension(glfwExtensions[i]);
+	}
+
+	createInfo.addDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+	context.createInstance(createInfo);
+
+	surface = getGlfwSurfaceKHR(context, window);
+
+	context.pickPhysicalDevice(createInfo);
+	context.createDevice(createInfo);
+
 	this->instance = context.getInstance();
 	this->physicalDevice = context.getPhysicalDevice();
 	this->device = context.getDevice();
@@ -31,7 +66,8 @@ AppBase::AppBase(const Context context, const vk::SurfaceKHR surface)
 		throw std::runtime_error("AppBase: Swapchain KHR can't be created!");
 	}
 
-	allocator = mvk::alloc::init(context);
+	allocator = mvk::alloc::init(physicalDevice, device, instance);
+
 	createSemaphores();
 	createCommandPool(context.getGraphicsQueueFamilyIndex());
 	updateSwapchain();
@@ -42,6 +78,8 @@ AppBase::AppBase(const Context context, const vk::SurfaceKHR surface)
 		static_cast<uint32_t>(swapchain.getSwapchainSwainSize());
 	const auto swapchainExtent = swapchain.getSwapchainExtent();
 	scene.init(device, allocator, swapchainSize, swapchainExtent);
+
+	glfwSetWindowUserPointer(window, this);
 }
 
 void AppBase::release()
@@ -129,6 +167,45 @@ void AppBase::drawFrame()
 void AppBase::setSwapchainDirty()
 {
 	needResize = true;
+}
+
+void AppBase::run()
+{
+	while (!glfwWindowShouldClose(window))
+	{
+		drawFrame();
+		glfwPollEvents();
+	}
+}
+
+void AppBase::terminate()
+{
+	waitIdle();
+	release();
+
+	context.getInstance().destroySurfaceKHR(surface);
+	context.release();
+
+	glfwDestroyWindow(window);
+	glfwTerminate();
+}
+
+vk::SurfaceKHR AppBase::getGlfwSurfaceKHR(const mvk::Context context,
+                                          GLFWwindow* window)
+{
+	VkSurfaceKHR _surface;
+
+	if (glfwCreateWindowSurface(
+		static_cast<VkInstance>(context.getInstance()),
+		window,
+		nullptr,
+		&_surface) != VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create window surface khr");
+	}
+
+	const auto surface = vk::SurfaceKHR(_surface);
+	return surface;
 }
 
 void AppBase::updateSwapchain()
@@ -293,8 +370,7 @@ void AppBase::setupFrameCommandBuffer(const int index,
 			commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
 			                              vk::IndexType::eUint16);
 
-			commandBuffer.drawIndexed(static_cast<uint32_t>(size), 1, 0, 0,
-			                          0);
+			commandBuffer.drawIndexed(size, 1, 0, 0, 0);
 		}
 	}
 
@@ -457,4 +533,19 @@ static alloc::Buffer createGpuIndexBuffer(const vma::Allocator allocator,
 		alloc::allocateGpuOnlyBuffer(allocator, bufferCreateInfo);
 
 	return buffer;
+}
+
+void framebufferResizeCallback(GLFWwindow* window, int width,
+                               int height)
+{
+	const auto app =
+		reinterpret_cast<AppBase*>(glfwGetWindowUserPointer(window));
+
+	while (width == 0 || height == 0)
+	{
+		glfwGetFramebufferSize(window, &width, &height);
+		glfwWaitEvents();
+	}
+
+	app->setSwapchainDirty();
 }

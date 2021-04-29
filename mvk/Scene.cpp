@@ -73,7 +73,7 @@ void Scene::createDescriptorPool(const vk::Device device, const uint32_t size)
 	const vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo =
 	{
 		.maxSets = size,
-		.poolSizeCount = descriptorPoolSizes.size(),
+		.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size()),
 		.pPoolSizes = descriptorPoolSizes.data()
 	};
 

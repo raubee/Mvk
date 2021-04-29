@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Mesh.h"
-#include "VulkanVma.h"
+#include "./VulkanVma.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE

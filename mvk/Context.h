@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ContextCreateInfo.h"
-#include <optional>
 
 namespace mvk
 {

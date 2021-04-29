@@ -1,6 +1,6 @@
 #include "Texture2D.h"
 #define STB_IMAGE_IMPLEMENTATION
-#include "3rdParty/stb_image.h"
+#include "../3rdParty/stb_image.h"
 #include <string>
 
 using namespace mvk;

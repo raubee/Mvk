@@ -3,9 +3,9 @@
 using namespace mvk;
 
 Geometry::Geometry(const alloc::Buffer vertexBuffer,
-                   const size_t verticesCount,
+                   const uint32_t verticesCount,
                    const alloc::Buffer indexBuffer,
-                   const size_t indicesCount)
+                   const uint32_t indicesCount)
 {
 	this->vertexBuffer = vertexBuffer;
 	this->indexBuffer = indexBuffer;

@@ -1,10 +1,10 @@
-#pragma once
 #include "AppBase.h"
-#define TINYOBJLOADER_IMPLEMENTATION
-#include "3rdParty/tiny_obj_loader.h"
-#include "3rdParty/stb_image.h"
 #include "Texture2D.h"
 #include "BaseMaterial.h"
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "../3rdParty/tiny_obj_loader.h"
+#include "../3rdParty/stb_image.h"
 
 class ObjViewer : public mvk::AppBase
 {
@@ -45,8 +45,8 @@ class ObjViewer : public mvk::AppBase
 	}
 
 public:
-	ObjViewer(const mvk::Context context, const vk::SurfaceKHR surface):
-		AppBase(context, surface)
+	ObjViewer():
+		AppBase()
 	{
 		std::vector<mvk::Vertex> vertices;
 		std::vector<uint16_t> indices;
@@ -59,10 +59,10 @@ public:
 		const auto albedoPath = "assets/models/textures/Ganesha_BaseColor.jpg";
 
 		auto albedo = mvk::Texture2D(albedoPath, vk::Format::eR8G8B8A8Srgb);
-		auto image = createTextureBufferObject(albedo.getPixels(),
-		                                       albedo.getWidth(),
-		                                       albedo.getHeight(),
-		                                       albedo.getFormat());
+		const auto image = createTextureBufferObject(albedo.getPixels(),
+		                                             albedo.getWidth(),
+		                                             albedo.getHeight(),
+		                                             albedo.getFormat());
 		albedo.init(device, image);
 
 		mvk::BaseMaterialDescription description;
@@ -77,17 +77,19 @@ public:
 		};
 
 		mvk::GraphicPipeline graphicPipeline(device,
-		                       swapchain.getSwapchainExtent(),
-		                       renderPass.getRenderPass(),
-		                       material.
-		                       getPipelineShaderStageCreateInfo(),
-		                       descriptorSetLayouts.data(),
-		                       static_cast<int32_t>(
-			                       descriptorSetLayouts.
-			                       size()));
+		                                     swapchain.getSwapchainExtent(),
+		                                     renderPass.getRenderPass(),
+		                                     material.
+		                                     getPipelineShaderStageCreateInfo(),
+		                                     descriptorSetLayouts.data(),
+		                                     static_cast<int32_t>(
+			                                     descriptorSetLayouts.
+			                                     size()));
 
-		auto geometry = mvk::Geometry(vertexBuffer, vertices.size(),
-		                              indexBuffer, indices.size());
+		const auto verticesCount = static_cast<uint32_t>(vertices.size());
+		const auto indicesCount = static_cast<uint32_t>(indices.size());
+		auto geometry = mvk::Geometry(vertexBuffer, verticesCount,
+		                              indexBuffer, indicesCount);
 
 		auto mesh = mvk::Mesh(&geometry, &material, &graphicPipeline);
 
@@ -96,3 +98,11 @@ public:
 		setupCommandBuffers();
 	}
 };
+
+int main()
+{
+	ObjViewer app;
+	app.run();
+	app.terminate();
+	return EXIT_SUCCESS;
+}

@@ -1,11 +1,10 @@
-#pragma once
 #include "AppBase.h"
-#define TINYOBJLOADER_IMPLEMENTATION
-#include "3rdParty/tiny_obj_loader.h"
-#include "3rdParty/stb_image.h"
-
 #include "BaseMaterial.h"
 #include "NormalMaterial.h"
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "../3rdParty/tiny_obj_loader.h"
+#include "../3rdParty/stb_image.h"
 
 class MultiViewer : public mvk::AppBase
 {
@@ -46,8 +45,7 @@ class MultiViewer : public mvk::AppBase
 	}
 
 public:
-	MultiViewer(const mvk::Context context, const vk::SurfaceKHR surface):
-		AppBase(context, surface)
+	MultiViewer(): AppBase()
 	{
 		std::vector<mvk::Vertex> vertices;
 		std::vector<uint16_t> indices;
@@ -87,8 +85,10 @@ public:
 			                                     descriptorSetLayouts.
 			                                     size()));
 
-		auto geometry = mvk::Geometry(vertexBuffer, vertices.size(),
-		                              indexBuffer, indices.size());
+		const auto verticesCount = static_cast<uint32_t>(vertices.size());
+		const auto indicesCount = static_cast<uint32_t>(indices.size());
+		auto geometry = mvk::Geometry(vertexBuffer, verticesCount,
+		                              indexBuffer, indicesCount);
 
 		auto mesh = mvk::Mesh(&geometry, &material, &graphicPipeline);
 
@@ -113,8 +113,10 @@ public:
 
 		const auto vertexBufferP = createVertexBufferObject(verticesP);
 		const auto indexBufferP = createIndexBufferObject(indicesP);
-		auto planeGeo = mvk::Geometry(vertexBufferP, verticesP.size(),
-		                              indexBufferP, indicesP.size());
+		const auto verticesCountP = static_cast<uint32_t>(verticesP.size());
+		const auto indicesCountP = static_cast<uint32_t>(indicesP.size());
+		auto planeGeo = mvk::Geometry(vertexBufferP, verticesCountP,
+		                              indexBufferP, indicesCountP);
 
 		auto materialP = mvk::NormalMaterial(device);
 		materialP.init(device, allocator);
@@ -141,3 +143,11 @@ public:
 		setupCommandBuffers();
 	}
 };
+
+int main()
+{
+	MultiViewer app;
+	app.run();
+	app.terminate();
+	return EXIT_SUCCESS;
+}

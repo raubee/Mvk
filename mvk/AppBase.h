@@ -1,6 +1,15 @@
 #pragma once
+
 #include "Context.h"
+
+#define VK_USE_PLATFORM_WIN32_KHR
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+
 #include "SwapChain.h"
+#include "Vertex.h"
 #include "Scene.h"
 #include "RenderPass.h"
 
@@ -31,6 +40,9 @@ namespace mvk
 		void setupCommandBuffers();
 
 	private:
+
+		Context context;
+		GLFWwindow* window;
 
 		vk::Instance instance;
 		vk::PhysicalDevice physicalDevice;
@@ -70,11 +82,17 @@ namespace mvk
 
 	public:
 
-		AppBase(Context context, vk::SurfaceKHR surface);
+		AppBase();
 
 		void release();
 		void waitIdle() const;
 		void drawFrame();
 		void setSwapchainDirty();
+
+		void run();
+		void terminate();
+
+		vk::SurfaceKHR getGlfwSurfaceKHR(const mvk::Context context,
+		                                 GLFWwindow* window);
 	};
 }

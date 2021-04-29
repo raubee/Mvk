@@ -1,6 +1,9 @@
 #pragma once
+
 #include "Shader.h"
-#include "VulkanVma.h"
+
+#define VMA_HPP_NO_STRUCT_CONSTRUCTORS
+#include "../3rdParty/vk_mem_alloc.hpp"
 
 namespace mvk
 {
