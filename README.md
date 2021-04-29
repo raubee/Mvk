@@ -28,14 +28,14 @@ Model loading : [tiny_obj_loader.h](https://github.com/tinyobjloader/tinyobjload
 
 Mostly based on https://vulkan-tutorial.com/
 
-## Simple Viewer (SimpleViewer.h)
+## Simple Viewer (SimpleViewer)
 
 <img src="/captures/simpleviewer.png" style="display:block; margin:auto"/>
 
-## Obj Viewer (ObjViewer.h)
+## Obj Viewer (ObjViewer)
 
 <img src="/captures/objviewer.png" style="display:block; margin:auto"/>
 
-## Multi Viewer (Multiviewer.h)
+## Multi Viewer (MultiViewer)
 
 <img src="/captures/multiviewer.png" style="display:block; margin:auto"/>
