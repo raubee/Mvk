@@ -1,7 +1,5 @@
 # mvk 
-mvk is a library for building vulkan based samples
-It's written in C++ 20</br>
-Currently, it renders 3D models with a basic texture.</br>
+mvk is a library for building vulkan based samples written in C++ 20</br>
 
 Features : 
 - Loading textures
@@ -25,8 +23,6 @@ Windows diplay : [GLFW](https://www.glfw.org/)</br>
 Maths : [GLM](https://glm.g-truc.net/0.9.9/index.html)</br>
 Image loading : [stb_image.h](https://github.com/nothings/stb/blob/master/stb_image.h)</br>
 Model loading : [tiny_obj_loader.h](https://github.com/tinyobjloader/tinyobjloader)</br>
-
-Mostly based on https://vulkan-tutorial.com/
 
 ## Simple Viewer (SimpleViewer)
 
