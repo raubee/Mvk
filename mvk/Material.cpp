@@ -1,9 +1,9 @@
 #include "Material.h"
-#include "Vertex.h"
 
 using namespace mvk;
 
-Material::Material(Shader* vertShader,
+Material::Material(const vk::Device device,
+                   Shader* vertShader,
                    Shader* fragShader,
                    Shader* geoShader,
                    Shader* tesShader)
@@ -12,14 +12,6 @@ Material::Material(Shader* vertShader,
 	this->fragShader = fragShader;
 	this->geoShader = geoShader;
 	this->tesShader = tesShader;
-}
-
-void Material::init(const vk::Device device, vma::Allocator allocator)
-{
-	createDescriptorSetLayout(device);
-	createDescriptorPool(device);
-	createDescriptorSets(device);
-	updateDescriptorSets(device);
 }
 
 void Material::release(const vk::Device device)

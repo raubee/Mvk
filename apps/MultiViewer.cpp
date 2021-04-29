@@ -45,7 +45,7 @@ class MultiViewer : public mvk::AppBase
 	}
 
 public:
-	MultiViewer(): AppBase()
+	MultiViewer()
 	{
 		std::vector<mvk::Vertex> vertices;
 		std::vector<uint16_t> indices;
@@ -68,7 +68,6 @@ public:
 		description.albedo = &albedo;
 
 		auto material = mvk::BaseMaterial(device, description);
-		material.init(device, allocator);
 
 		std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts = {
 			scene.getDescriptorSetLayout(),
@@ -119,8 +118,6 @@ public:
 		                              indexBufferP, indicesCountP);
 
 		auto materialP = mvk::NormalMaterial(device);
-		materialP.init(device, allocator);
-
 
 		std::array<vk::DescriptorSetLayout, 1> descriptorSetLayoutsP = {
 			scene.getDescriptorSetLayout()

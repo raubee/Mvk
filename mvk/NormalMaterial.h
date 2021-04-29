@@ -1,7 +1,5 @@
 #pragma once
 
-#pragma once
-
 #include "Material.h"
 #include "Texture2D.h"
 

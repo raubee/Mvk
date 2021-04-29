@@ -68,31 +68,29 @@ namespace mvk
 
 		bool checkSwapchainSupport();
 		void createSwapchain();
-		void createRenderPass();
 		void createSwapchainFrames();
-
-		void createCommandPool(uint32_t queueFamily);
+		void createRenderPass();
 		void createSemaphores();
+		void createCommandPool(uint32_t queueFamily);
 		void setupFrameCommandBuffer(int index,
 		                             SwapchainFrame swapchainFrame);
 		void updateSwapchain();
 		void cleanupSwapchain();
 
+		void waitIdle() const;
+		void drawFrame();
 		void update();
+		void release();
 
 	public:
 
 		AppBase();
 
-		void release();
-		void waitIdle() const;
-		void drawFrame();
-		void setSwapchainDirty();
-
 		void run();
 		void terminate();
+		void setSwapchainDirty();
 
 		vk::SurfaceKHR getGlfwSurfaceKHR(const mvk::Context context,
-		                                 GLFWwindow* window);
+			GLFWwindow* window);
 	};
 }

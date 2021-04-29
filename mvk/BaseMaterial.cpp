@@ -4,17 +4,17 @@ using namespace mvk;
 
 BaseMaterial::BaseMaterial(const vk::Device device,
                            const BaseMaterialDescription description) :
-	Material(new Shader(device, "shaders/vert.spv",
+	Material(device,
+	         new Shader(device, "shaders/vert.spv",
 	                    vk::ShaderStageFlagBits::eVertex),
 	         new Shader(device, "shaders/frag.spv",
 	                    vk::ShaderStageFlagBits::eFragment)),
 	albedo(description.albedo)
 {
-}
-
-void BaseMaterial::init(const vk::Device device, const vma::Allocator allocator)
-{
-	Material::init(device, allocator);
+	createDescriptorSetLayout(device);
+	createDescriptorPool(device);
+	createDescriptorSets(device);
+	updateDescriptorSets(device);
 }
 
 void BaseMaterial::createDescriptorPool(const vk::Device device)

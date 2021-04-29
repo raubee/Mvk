@@ -22,11 +22,10 @@ namespace mvk
 
 		Texture2D* albedo;
 
-		void init(vk::Device device, vma::Allocator allocator) override;
-		void createDescriptorPool(vk::Device device) override;
-		void updateDescriptorSets(vk::Device device) override;
-		void createDescriptorSetLayout(vk::Device device) override;
-		void createDescriptorSets(vk::Device device) override;
+		void createDescriptorPool(vk::Device device);
+		void updateDescriptorSets(vk::Device device);
+		void createDescriptorSetLayout(vk::Device device);
+		void createDescriptorSets(vk::Device device);
 		void release(vk::Device device) override;
 	};
 }

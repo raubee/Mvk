@@ -45,8 +45,7 @@ class ObjViewer : public mvk::AppBase
 	}
 
 public:
-	ObjViewer():
-		AppBase()
+	ObjViewer()
 	{
 		std::vector<mvk::Vertex> vertices;
 		std::vector<uint16_t> indices;
@@ -69,7 +68,6 @@ public:
 		description.albedo = &albedo;
 
 		auto material = mvk::BaseMaterial(device, description);
-		material.init(device, allocator);
 
 		std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts = {
 			scene.getDescriptorSetLayout(),

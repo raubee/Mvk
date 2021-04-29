@@ -4,7 +4,7 @@
 class SimpleViewer : public mvk::AppBase
 {
 public:
-	SimpleViewer() : AppBase()
+	SimpleViewer()
 	{
 		const auto vertices = std::vector<mvk::Vertex>({
 			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
@@ -31,7 +31,6 @@ public:
 		                              indexBuffer, indicesCount);
 
 		auto material = mvk::NormalMaterial(device);
-		material.init(device, allocator);
 
 		std::array<vk::DescriptorSetLayout, 1> descriptorSetLayouts = {
 			scene.getDescriptorSetLayout()
