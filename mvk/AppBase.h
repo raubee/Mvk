@@ -1,13 +1,12 @@
 #pragma once
 
-#include "Context.h"
-
 #define VK_USE_PLATFORM_WIN32_KHR
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 
+#include "Utils.hpp"
 #include "SwapChain.h"
 #include "Vertex.h"
 #include "Scene.h"
@@ -17,80 +16,86 @@
 
 namespace mvk
 {
+	struct AppInfo
+	{
+		const char* appName = "App";
+		int width = 600;
+		int height = 600;
+		bool fullscreen = false;
+	};
+
 	class AppBase
 	{
 	protected:
 
-		Scene scene;
-		SwapChain swapchain;
 		vk::Device device;
 		vma::Allocator allocator;
+		vk::CommandPool commandPool;
+		vk::Queue graphicsQueue;
+		vk::Queue transferQueue;
+		vk::Queue presentQueue;
+
+		SwapChain swapchain;
 		RenderPass renderPass;
 
-		alloc::Buffer createVertexBufferObject(
-			std::vector<Vertex> vertices) const;
-		alloc::Buffer createIndexBufferObject(
-			std::vector<uint16_t> indices) const;
-
-		alloc::Image createTextureBufferObject(unsigned char* pixels,
-		                                       uint32_t width,
-		                                       uint32_t height,
-		                                       vk::Format format) const;
-
-		void setupCommandBuffers();
+		Scene scene;
 
 	private:
+		const char* appName;
+		int width;
+		int height;
 
-		Context context;
+		vk::ApplicationInfo applicationInfo;
+
+		PreferredQueueFamilySettings preferredQueueFamilySetting;
+
 		GLFWwindow* window;
+		std::vector<const char*> glfwExtensions;
+
+		vk::SurfaceKHR surface;
 
 		vk::Instance instance;
 		vk::PhysicalDevice physicalDevice;
-		vk::SurfaceKHR surface;
 
-		vk::CommandPool commandPool;
-		vk::DescriptorPool descriptorPool;
+		uint32_t graphicsQueueFamilyIndex;
+		uint32_t transferQueueFamilyIndex;
 
 		vk::Semaphore imageAvailableSemaphore;
 		vk::Semaphore renderFinishedSemaphore;
-
-		vk::Queue graphicQueue;
-		vk::Queue transferQueue;
-		vk::Queue presentQueue;
 
 		bool needResize;
 
 		std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
 
-		const std::vector<const char*> deviceExtensions = {
-			VK_KHR_SWAPCHAIN_EXTENSION_NAME
-		};
+		void setupWindow(bool fullscreen);
+		static void framebufferResizeCallback(GLFWwindow* window, int width,
+		                                      int height);
 
-		bool checkSwapchainSupport();
+		void filterAvailableLayers(std::vector<const char*>& layers);
+		void filterDeviceExtensions(std::vector<const char*>& extensions) const;
+		void createInstance();
+		void createSurfaceKHR();
+		void pickPhysicalDevice();
+		void createDevice();
+		void createAllocator();
 		void createSwapchain();
 		void createSwapchainFrames();
+		void updateSwapchain();
 		void createRenderPass();
 		void createSemaphores();
-		void createCommandPool(uint32_t queueFamily);
-		void setupFrameCommandBuffer(int index,
-		                             SwapchainFrame swapchainFrame);
-		void updateSwapchain();
-		void cleanupSwapchain();
+		void createCommandPool();
+		void setupScene();
+
+		virtual void buildCommandBuffers();
 
 		void waitIdle() const;
 		void drawFrame();
-		void update();
-		void release();
-
-	public:
-
-		AppBase();
-
-		void run();
-		void terminate();
+		void update() const;
 		void setSwapchainDirty();
 
-		vk::SurfaceKHR getGlfwSurfaceKHR(const mvk::Context context,
-			GLFWwindow* window);
+	public:
+		AppBase(AppInfo info);
+		virtual ~AppBase();
+		void run();
 	};
 }

@@ -5,10 +5,15 @@
 
 using namespace mvk;
 
-Texture2D::Texture2D(const char* path, const vk::Format format)
+void Texture2D::loadFromFile(const vma::Allocator allocator,
+                             const vk::Device device,
+                             const vk::CommandPool commandPool,
+                             const vk::Queue transferQueue,
+                             const char* path,
+                             const vk::Format format)
 {
 	int w, h, c;
-	pixels = stbi_load(path, &w, &h, &c,
+	const auto pixels = stbi_load(path, &w, &h, &c,
 	                   STBI_rgb_alpha);
 
 	if (!pixels)
@@ -17,19 +22,19 @@ Texture2D::Texture2D(const char* path, const vk::Format format)
 			path);
 	}
 
-	width = static_cast<uint32_t>(w);
-	height = static_cast<uint32_t>(h);
+	this->width = static_cast<uint32_t>(w);
+	this->height = static_cast<uint32_t>(h);
 	this->format = format;
-}
-
-void Texture2D::init(const vk::Device device, const alloc::Image image)
-{
-	this->image = image;
-
+	this->image = alloc::transferImageDataToGpuImage(allocator, device,
+	                                                 commandPool, transferQueue,
+	                                                 pixels, width, height,
+	                                                 format);
 	createImageView(device);
 	createSampler(device);
-	cleanPixels();
+
+	stbi_image_free(pixels);
 }
+
 
 void Texture2D::createImageView(const vk::Device device)
 {
@@ -76,15 +81,7 @@ void Texture2D::createSampler(const vk::Device device)
 void Texture2D::release(const vk::Device device,
                         const vma::Allocator allocator) const
 {
-	cleanPixels();
-
 	device.destroySampler(sampler);
 	device.destroyImageView(imageView);
 	deallocateImage(allocator, image);
-}
-
-void Texture2D::cleanPixels() const
-{
-	if (pixels != nullptr)
-		stbi_image_free(pixels);
 }

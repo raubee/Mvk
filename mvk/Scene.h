@@ -24,14 +24,14 @@ namespace mvk
 		{
 		}
 
-		void init(vk::Device device,
+		void setup(vk::Device device,
 		          vma::Allocator allocator,
 		          uint32_t size,
 		          vk::Extent2D extent);
 
-		void update(vma::Allocator allocator, float time, vk::Extent2D extent);
+		void update(vma::Allocator allocator, float time, vk::Extent2D extent) const;
 
-		void release(vk::Device device, vma::Allocator allocator);
+		void release(vk::Device device, vma::Allocator allocator) const;
 
 		void createDescriptorSetLayout(vk::Device device);
 		void createDescriptorPool(vk::Device device, uint32_t size);

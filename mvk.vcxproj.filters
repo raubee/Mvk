@@ -33,12 +33,6 @@
     <ClInclude Include="mvk\BaseMaterial.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
-    <ClInclude Include="mvk\Context.h">
-      <Filter>Fichiers d%27en-tête</Filter>
-    </ClInclude>
-    <ClInclude Include="mvk\ContextCreateInfo.h">
-      <Filter>Fichiers d%27en-tête</Filter>
-    </ClInclude>
     <ClInclude Include="mvk\Geometry.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
@@ -84,18 +78,15 @@
     <ClInclude Include="mvk\Vulkan.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="mvk\Utils.hpp">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="mvk\AppBase.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
     <ClCompile Include="mvk\BaseMaterial.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
-    <ClCompile Include="mvk\Context.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
-    <ClCompile Include="mvk\ContextCreateInfo.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
     <ClCompile Include="mvk\Geometry.cpp">

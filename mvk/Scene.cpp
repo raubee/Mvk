@@ -3,10 +3,10 @@
 
 using namespace mvk;
 
-void Scene::init(const vk::Device device,
-                 const vma::Allocator allocator,
-                 const uint32_t size,
-                 const vk::Extent2D extent)
+void Scene::setup(const vk::Device device,
+                  const vma::Allocator allocator,
+                  const uint32_t size,
+                  const vk::Extent2D extent)
 {
 	createUniformBufferObject(allocator);
 	updateUniformBufferObject(allocator, 0.0f, extent);
@@ -17,18 +17,17 @@ void Scene::init(const vk::Device device,
 }
 
 void Scene::update(const vma::Allocator allocator, const float time,
-                   const vk::Extent2D extent)
+                   const vk::Extent2D extent) const
 {
 	updateUniformBufferObject(allocator, time, extent);
 }
 
-void Scene::release(const vk::Device device, const vma::Allocator allocator)
+void Scene::release(const vk::Device device,
+                    const vma::Allocator allocator) const
 {
-	for (auto object : getObjects())
-	{
-		if (object != nullptr)
-			object->release(device, allocator);
-	}
+	device.destroyDescriptorPool(descriptorPool);
+	device.destroyDescriptorSetLayout(descriptorSetLayout);
+	alloc::deallocateBuffer(allocator, uniformBuffer);
 }
 
 void Scene::createDescriptorSetLayout(const vk::Device device)

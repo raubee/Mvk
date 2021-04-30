@@ -340,5 +340,118 @@ namespace mvk
 		{
 			allocator.unmapMemory(buffer.allocation);
 		}
+
+
+		static Buffer createGpuBufferDst(const vma::Allocator allocator,
+		                                 const vk::DeviceSize size,
+		                                 const vk::BufferUsageFlagBits
+		                                 usageFlag)
+		{
+			const vk::BufferCreateInfo bufferCreateInfo = {
+				.size = static_cast<vk::DeviceSize>(size),
+				.usage = vk::BufferUsageFlagBits::eTransferDst | usageFlag,
+				.sharingMode = vk::SharingMode::eExclusive
+			};
+
+			const auto buffer =
+				allocateGpuOnlyBuffer(allocator, bufferCreateInfo);
+
+			return buffer;
+		}
+
+		static alloc::Buffer transferDataSetToGpuBuffer(
+			const vma::Allocator allocator,
+			const vk::Device device,
+			const vk::CommandPool commandPool,
+			const vk::Queue transferQueue,
+			void* data,
+			const vk::DeviceSize size,
+			const vk::BufferUsageFlagBits usageFlag)
+		{
+			const auto stagingVertexBuffer =
+				alloc::allocateStagingTransferBuffer(allocator, data, size);
+			const auto indexBuffer = alloc::createGpuBufferDst(allocator, size,
+			                                                   usageFlag);
+			alloc::copyCpuToGpuBuffer(device, commandPool, transferQueue,
+			                          stagingVertexBuffer, indexBuffer, size);
+			alloc::deallocateBuffer(allocator, stagingVertexBuffer);
+
+			return indexBuffer;
+		}
+
+		static alloc::Image transferImageDataToGpuImage(
+			const vma::Allocator allocator,
+			const vk::Device device,
+			const vk::CommandPool commandPool,
+			const vk::Queue transferQueue, 
+			unsigned char* pixels,
+			const uint32_t width,
+			const uint32_t height,
+			const vk::Format format)
+		{
+			const vk::DeviceSize imageSize = width * height * 4;
+			const vk::BufferCreateInfo bufferCreateInfo = {
+				.size = imageSize,
+				.usage = vk::BufferUsageFlagBits::eTransferSrc
+			};
+
+			const auto stagingBuffer =
+				alloc::allocateMappedCpuToGpuBuffer(allocator, bufferCreateInfo,
+					pixels);
+
+			const vk::Extent3D imageExtent = {
+				.width = width,
+				.height = height,
+				.depth = 1
+			};
+
+			const vk::ImageCreateInfo imageCreateInfo = {
+				.imageType = vk::ImageType::e2D,
+				.format = format,
+				.extent = imageExtent,
+				.mipLevels = 1,
+				.arrayLayers = 1,
+				.samples = vk::SampleCountFlagBits::e1,
+				.tiling = vk::ImageTiling::eOptimal,
+				.usage = vk::ImageUsageFlagBits::eTransferDst |
+				vk::ImageUsageFlagBits::eSampled,
+				.sharingMode = vk::SharingMode::eExclusive,
+				.initialLayout = vk::ImageLayout::eUndefined,
+			};
+
+			const auto imageBuffer = alloc::allocateGpuOnlyImage(allocator,
+				imageCreateInfo);
+
+			const vk::BufferImageCopy bufferImageCopy = {
+				.bufferOffset = 0,
+				.bufferRowLength = 0,
+				.bufferImageHeight = 0,
+				.imageSubresource = {
+					.aspectMask = vk::ImageAspectFlagBits::eColor,
+					.mipLevel = 0,
+					.baseArrayLayer = 0,
+					.layerCount = 1,
+				},
+				.imageOffset = {0, 0},
+				.imageExtent = imageExtent,
+			};
+
+			alloc::transitionImageLayout(device, commandPool, transferQueue,
+				imageBuffer.image, format,
+				vk::ImageLayout::eUndefined,
+				vk::ImageLayout::eTransferDstOptimal);
+
+			alloc::copyCpuBufferToGpuImage(device, commandPool, transferQueue,
+				stagingBuffer, imageBuffer, bufferImageCopy);
+
+			alloc::transitionImageLayout(device, commandPool, transferQueue,
+				imageBuffer.image, format,
+				vk::ImageLayout::eTransferDstOptimal,
+				vk::ImageLayout::eShaderReadOnlyOptimal);
+
+			alloc::deallocateBuffer(allocator, stagingBuffer);
+
+			return imageBuffer;
+		}
 	}
 };

@@ -23,16 +23,16 @@ void SwapChain::createSwapChainKHR(const vk::PhysicalDevice physicalDevice,
 		selectSwapchainPresentMode(physicalDevice, surface);
 	const auto capabilities = getSwapchainCapabilities(physicalDevice, surface);
 
-	swapchainSize = capabilities.capabilities.minImageCount + 1;
-	swapchainExtent = capabilities.capabilities.currentExtent;
-	swapchainFormat = selectSwapchainFormat(capabilities.formats);
+	size = capabilities.capabilities.minImageCount + 1;
+	extent = capabilities.capabilities.currentExtent;
+	frameFormat = selectSwapchainFormat(capabilities.formats);
 
 	const vk::SwapchainCreateInfoKHR swapchainCreateInfoKhr = {
 		.surface = surface,
-		.minImageCount = swapchainSize,
-		.imageFormat = swapchainFormat,
+		.minImageCount = size,
+		.imageFormat = frameFormat,
 		.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear,
-		.imageExtent = swapchainExtent,
+		.imageExtent = extent,
 		.imageArrayLayers = 1,
 		.imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
 		.pQueueFamilyIndices = &queueFamilyIndices,
@@ -51,7 +51,7 @@ void SwapChain::createCommandBuffers(const vk::Device device,
 	const vk::CommandBufferAllocateInfo commandBufferAllocateInfo = {
 		.commandPool = commandPool,
 		.level = vk::CommandBufferLevel::ePrimary,
-		.commandBufferCount = static_cast<uint32_t>(swapchainSize)
+		.commandBufferCount = static_cast<uint32_t>(size)
 	};
 
 	commandBuffers = device.allocateCommandBuffers(commandBufferAllocateInfo);
@@ -67,13 +67,13 @@ void SwapChain::createCommandBuffers(const vk::Device device,
 void SwapChain::createSwapchainFrames(const vk::Device device,
                                       const vk::RenderPass renderPass)
 {
-	swapchainFrames.resize(swapchainSize);
+	swapchainFrames.resize(size);
 	const auto swapchainImages = device.getSwapchainImagesKHR(swapchain);
 
 	for (auto i = 0; i < swapchainFrames.size(); i++)
 	{
 		swapchainFrames[i].create(device, swapchainImages[i], renderPass,
-		                          swapchainFormat, swapchainExtent,
+		                          frameFormat, extent,
 		                          depthImageView);
 	}
 }
@@ -100,15 +100,14 @@ void SwapChain::createDepthImageView(const vk::Device device,
                                      const vk::CommandPool commandPool,
                                      const vk::Queue transferQueue)
 {
-	// TODO: Best appropriated format supported by the physical device
 	depthFormat = vk::Format::eD32Sfloat;
 
 	const vk::ImageCreateInfo imageCreateInfo = {
 		.imageType = vk::ImageType::e2D,
 		.format = depthFormat,
 		.extent = {
-			.width = swapchainExtent.width,
-			.height = swapchainExtent.height,
+			.width = extent.width,
+			.height = extent.height,
 			.depth = 1,
 		},
 		.mipLevels = 1,

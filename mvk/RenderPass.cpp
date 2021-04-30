@@ -7,7 +7,7 @@ void RenderPass::create(const vk::Device device,
                         const vk::Format depthFormat)
 {
 	/** Color Description **/
-	vk::AttachmentDescription colorAttachment = {
+	const vk::AttachmentDescription colorAttachment = {
 		.format = colorFormat,
 		.samples = vk::SampleCountFlagBits::e1,
 		.loadOp = vk::AttachmentLoadOp::eClear,
@@ -19,7 +19,7 @@ void RenderPass::create(const vk::Device device,
 	};
 
 	/** Depth description **/
-	vk::AttachmentDescription depthAttachment = {
+	const vk::AttachmentDescription depthAttachment = {
 		.format = depthFormat,
 		.samples = vk::SampleCountFlagBits::e1,
 		.loadOp = vk::AttachmentLoadOp::eClear,
@@ -31,24 +31,24 @@ void RenderPass::create(const vk::Device device,
 	};
 
 	/** SubPass and attachments references **/
-	vk::AttachmentReference colorReference = {
+	const vk::AttachmentReference colorReference = {
 		.attachment = 0,
 		.layout = vk::ImageLayout::eColorAttachmentOptimal
 	};
 
-	vk::AttachmentReference depthReference = {
+	const vk::AttachmentReference depthReference = {
 		.attachment = 1,
 		.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal
 	};
 
-	vk::SubpassDescription subPass = {
+	const vk::SubpassDescription subPass = {
 		.pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
 		.colorAttachmentCount = 1,
 		.pColorAttachments = &colorReference,
 		.pDepthStencilAttachment = &depthReference
 	};
 
-	std::array<vk::AttachmentDescription, 2> attachments = {
+	const std::array<vk::AttachmentDescription, 2> attachments = {
 		colorAttachment,
 		depthAttachment
 	};
@@ -65,6 +65,5 @@ void RenderPass::create(const vk::Device device,
 
 void RenderPass::release(const vk::Device device) const
 {
-	if (renderPass)
-		device.destroyRenderPass(renderPass);
+	device.destroyRenderPass(renderPass);
 }

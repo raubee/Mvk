@@ -3,13 +3,13 @@
 
 using namespace mvk;
 
-GraphicPipeline::GraphicPipeline(vk::Device device,
-                                 vk::Extent2D extent,
-                                 vk::RenderPass renderPass,
-                                 std::vector<vk::PipelineShaderStageCreateInfo>
-                                 shaderStageCreateInfos,
-                                 vk::DescriptorSetLayout* descriptorSetLayouts,
-                                 uint32_t descriptorLayoutsSize)
+void GraphicPipeline::build(vk::Device device,
+                            vk::Extent2D extent,
+                            vk::RenderPass renderPass,
+                            std::vector<vk::PipelineShaderStageCreateInfo>
+                            shaderStageCreateInfos,
+                            vk::DescriptorSetLayout* descriptorSetLayouts,
+                            uint32_t descriptorLayoutsSize)
 {
 	/** Vertex Input State settings **/
 	auto bindingDescription = Vertex::getBindingDescription();

@@ -19,10 +19,10 @@ namespace mvk
 		alloc::Image depthImage;
 		vk::ImageView depthImageView;
 
-		uint32_t swapchainSize;
-		vk::Extent2D swapchainExtent;
-		vk::Format swapchainFormat;
-		vk::Format depthFormat;
+		uint32_t size = 0;
+		vk::Extent2D extent;
+		vk::Format frameFormat = vk::Format::eUndefined;
+		vk::Format depthFormat = vk::Format::eUndefined;
 
 		void createDepthImageView(vk::Device device,
 		                          vma::Allocator allocator,
@@ -62,9 +62,9 @@ namespace mvk
 
 		vk::SwapchainKHR getSwapchain() const { return swapchain; }
 
-		size_t getSwapchainSwainSize() const { return swapchainSize; }
-		vk::Extent2D getSwapchainExtent() const { return swapchainExtent; }
-		vk::Format getSwapchainFormat() const { return swapchainFormat; }
+		size_t getSwapchainSwainSize() const { return size; }
+		vk::Extent2D getSwapchainExtent() const { return extent; }
+		vk::Format getSwapchainFormat() const { return frameFormat; }
 
 		SwapchainFrame getSwapchainFrame(const int32_t index) const
 		{

@@ -4,94 +4,442 @@
 
 using namespace mvk;
 
-static alloc::Buffer createGpuVertexBuffer(vma::Allocator allocator,
-                                           vk::DeviceSize size);
-static alloc::Buffer createGpuIndexBuffer(vma::Allocator allocator,
-                                          vk::DeviceSize size);
-
-static void
-framebufferResizeCallback(GLFWwindow* window, int width, int height);
-
-AppBase::AppBase()
-	: needResize(false)
+AppBase::AppBase(const AppInfo info)
+	: appName(info.appName),
+	  width(info.width),
+	  height(info.height),
+	  needResize(false),
+	  startTime(std::chrono::high_resolution_clock::now())
 {
-	const auto appName = "Test";
+	setupWindow(info.fullscreen);
+	createInstance();
+	createSurfaceKHR();
+	pickPhysicalDevice();
+	createDevice();
+	createAllocator();
+	createSemaphores();
+	createCommandPool();
+	updateSwapchain();
+	setupScene();
+}
+
+AppBase::~AppBase()
+{
+	waitIdle();
+
+	scene.release(device, allocator);
+	renderPass.release(device);
+	swapchain.release(device, allocator);
+
+	device.destroyCommandPool(commandPool);
+	device.destroySemaphore(imageAvailableSemaphore);
+	device.destroySemaphore(renderFinishedSemaphore);
+
+	allocator.destroy();
+	device.destroy();
+
+	instance.destroySurfaceKHR(surface);
+	instance.destroy();
+
+	glfwDestroyWindow(window);
+	glfwTerminate();
+}
+
+void AppBase::setupWindow(const bool fullscreen)
+{
+	if (fullscreen)
+	{
+		// TODO : Screen size
+		width = 600;
+		height = 600;
+	}
 
 	glfwInit();
+
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	window = glfwCreateWindow(600, 600, appName, nullptr, nullptr);
+	window = glfwCreateWindow(width, height, appName, nullptr, nullptr);
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-	uint32_t glfwExtensionsCount = 0;
-	const auto glfwExtensions = glfwGetRequiredInstanceExtensions(
-		&glfwExtensionsCount);
 
-	mvk::ContextCreationInfo createInfo;
+	uint32_t count = 0;
+	const auto extensions =
+		glfwGetRequiredInstanceExtensions(&count);
 
-#if (NDEBUG)
-	createInfo.addInstanceLayer("VK_LAYER_KHRONOS_validation");
-	createInfo.addInstanceLayer("VK_LAYER_LUNARG_monitor");
-	createInfo.addInstanceLayer("VK_LAYER_LUNARG_standard_validation");
-#endif
-
-	for (size_t i = 0; i < glfwExtensionsCount; i++)
+	for (size_t i = 0; i < count; i++)
 	{
-		createInfo.addInstanceExtension(glfwExtensions[i]);
+		glfwExtensions.push_back(extensions[i]);
 	}
-
-	createInfo.addDeviceExtension(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-
-	context.createInstance(createInfo);
-
-	surface = getGlfwSurfaceKHR(context, window);
-
-	context.pickPhysicalDevice(createInfo);
-	context.createDevice(createInfo);
-
-	this->instance = context.getInstance();
-	this->physicalDevice = context.getPhysicalDevice();
-	this->device = context.getDevice();
-	this->graphicQueue = context.getGraphicsQueue();
-	this->presentQueue = context.getPresentQueue();
-	this->transferQueue = context.getTransferQueue();
-	this->surface = surface;
-
-	if (!physicalDevice.getSurfaceSupportKHR(
-		context.getGraphicsQueueFamilyIndex(), surface))
-	{
-		throw std::runtime_error("AppBase: Surface KHR not supported!");
-	}
-
-	if (!checkSwapchainSupport())
-	{
-		throw std::runtime_error("AppBase: Swapchain KHR can't be created!");
-	}
-
-	allocator = mvk::alloc::init(physicalDevice, device, instance);
-
-	createSemaphores();
-	createCommandPool(context.getGraphicsQueueFamilyIndex());
-	updateSwapchain();
-
-	startTime = std::chrono::high_resolution_clock::now();
-
-	const auto swapchainSize =
-		static_cast<uint32_t>(swapchain.getSwapchainSwainSize());
-	const auto swapchainExtent = swapchain.getSwapchainExtent();
-	scene.init(device, allocator, swapchainSize, swapchainExtent);
 
 	glfwSetWindowUserPointer(window, this);
 }
 
-void AppBase::release()
+void AppBase::filterAvailableLayers(std::vector<const char*>& layers)
 {
-	scene.release(device, allocator);
+	auto availableLayers = vk::enumerateInstanceLayerProperties();
 
-	cleanupSwapchain();
+#if (NDEBUG)
+	/* print supported layers */
+	std::cout
+		<< "Available validation layers: "
+		<< std::endl;
 
-	device.destroyDescriptorPool(descriptorPool);
-	device.destroyCommandPool(commandPool);
-	device.destroySemaphore(imageAvailableSemaphore);
-	device.destroySemaphore(renderFinishedSemaphore);
+	std::for_each(availableLayers.begin(),
+	              availableLayers.end(),
+	              [](auto const& e)
+	              {
+		              std::cout << e.layerName << std::endl;
+	              }
+	);
+	std::cout << std::endl;
+#endif
+
+	std::vector<const char*> retainLayers(0);
+
+	for (auto layer : layers)
+	{
+		auto found = std::find_if(availableLayers.begin(),
+		                          availableLayers.end(),
+		                          [layer](auto const& available)
+		                          {
+			                          return std::strcmp(
+					                          available.layerName, layer)
+				                          == 0;
+		                          });
+		if (found != availableLayers.end())
+		{
+			retainLayers.push_back(layer);
+		}
+	}
+
+#if (NDEBUG)
+	/* print supported layers */
+	std::cout
+		<< "Selected Validation layers: "
+		<< std::endl;
+
+	std::for_each(retainLayers.begin(),
+	              retainLayers.end(),
+	              [](auto const& e)
+	              {
+		              std::cout << e << std::endl;
+	              }
+	);
+
+	std::cout << std::endl;
+#endif
+
+	layers.clear();
+
+	for (auto layer : retainLayers)
+	{
+		layers.push_back(layer);
+	}
+}
+
+void AppBase::filterDeviceExtensions(std::vector<const char*>& extensions) const
+{
+	auto availableLayers = physicalDevice.enumerateDeviceExtensionProperties();
+
+#if (NDEBUG)
+	/* print supported extensions */
+	std::cout
+		<< "Available device extensions: "
+		<< std::endl;
+
+	std::for_each(availableLayers.begin(),
+	              availableLayers.end(),
+	              [](auto const& e)
+	              {
+		              std::cout << e.extensionName << std::endl;
+	              }
+	);
+	std::cout << std::endl;
+#endif
+
+	std::vector<const char*> retainExtensions(0);
+
+	for (auto layer : extensions)
+	{
+		auto found = std::find_if(availableLayers.begin(),
+		                          availableLayers.end(),
+		                          [layer](auto const& available)
+		                          {
+			                          return std::strcmp(
+					                          available.extensionName, layer)
+				                          == 0;
+		                          });
+
+		if (found != availableLayers.end())
+		{
+			retainExtensions.push_back(layer);
+		}
+	}
+
+#if (NDEBUG)
+	/* print supported extensions */
+	std::cout
+		<< "Selected device extensions: "
+		<< std::endl;
+
+	std::for_each(retainExtensions.begin(),
+	              retainExtensions.end(),
+	              [](auto const& e)
+	              {
+		              std::cout << e << std::endl;
+	              }
+	);
+
+	std::cout << std::endl;
+#endif
+
+	extensions.clear();
+
+	for (auto layer : retainExtensions)
+	{
+		extensions.push_back(layer);
+	}
+}
+
+void AppBase::createInstance()
+{
+#if (NDEBUG)
+	/* print supported extensions */
+	std::cout
+		<< "Supported extensions: "
+		<< std::endl;
+
+	auto supportedExtensions = vk::
+		enumerateInstanceExtensionProperties(nullptr);
+	std::for_each(supportedExtensions.begin(),
+	              supportedExtensions.end(),
+	              [](auto const& e)
+	              {
+		              std::cout << e.extensionName << std::endl;
+	              }
+	);
+
+	std::cout << std::endl;
+#endif
+
+	std::vector<const char*> instanceLayers;
+	std::vector<const char*> extensions{
+		VK_KHR_SURFACE_EXTENSION_NAME,
+		VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+	};
+
+#if (NDEBUG)
+	instanceLayers.push_back("VK_LAYER_KHRONOS_validation");
+	instanceLayers.push_back("VK_LAYER_LUNARG_monitor");
+	instanceLayers.push_back("VK_LAYER_LUNARG_standard_validation");
+#endif
+
+	const auto applicationInfo = vk::ApplicationInfo{
+		.pApplicationName = "mvk-app",
+		.applicationVersion = 1,
+		.pEngineName = "mvk-engine",
+		.engineVersion = 1,
+		.apiVersion = VK_API_VERSION_1_2,
+	};
+
+	vk::InstanceCreateInfo instanceCreateInfo = {
+		.pApplicationInfo = &applicationInfo,
+		.enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+		.ppEnabledExtensionNames = extensions.data()
+	};
+
+#if (NDEBUG)
+	filterAvailableLayers(instanceLayers);
+	instanceCreateInfo.enabledLayerCount =
+		static_cast<uint32_t>(instanceLayers.size());
+	instanceCreateInfo.ppEnabledLayerNames = instanceLayers.data();
+#else
+	{
+		instanceCreateInfo.enabledLayerCount = 0;
+		instanceCreateInfo.ppEnabledLayerNames = nullptr;
+	}
+#endif
+
+	instance = vk::createInstance(instanceCreateInfo);
+}
+
+void AppBase::createSurfaceKHR()
+{
+	VkSurfaceKHR _surface;
+	const auto instanceVk = static_cast<VkInstance>(instance);
+
+	if (glfwCreateWindowSurface(instanceVk, window, nullptr, &_surface)
+		!= VK_SUCCESS)
+	{
+		throw std::runtime_error("Failed to create window surface khr");
+	}
+
+	surface = static_cast<vk::SurfaceKHR>(_surface);
+}
+
+void AppBase::pickPhysicalDevice()
+{
+	const std::vector<const char*> deviceExtensions = {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
+
+	auto physicalDevices = instance.enumeratePhysicalDevices();
+
+	for (const auto physicalDevice : physicalDevices)
+	{
+		QueueFamilies queueFamilies;
+
+		if (isPhysicalDeviceSuitable(physicalDevice,
+		                             preferredQueueFamilySetting,
+		                             queueFamilies))
+		{
+			auto supportedExtensions =
+				physicalDevice.enumerateDeviceExtensionProperties(nullptr);
+
+			std::set<std::string> requiredExtensions(deviceExtensions.begin(),
+			                                         deviceExtensions.end());
+
+			for (const auto& extension : supportedExtensions)
+			{
+				requiredExtensions.erase(extension.extensionName);
+			}
+
+			if (!requiredExtensions.empty())
+			{
+				continue;
+			}
+
+			this->physicalDevice = physicalDevice;
+
+			graphicsQueueFamilyIndex = queueFamilies.graphicQueue.value();
+			transferQueueFamilyIndex = queueFamilies.transferQueue.value();
+
+			// Surface KHR supported ?
+			if (!physicalDevice.getSurfaceSupportKHR(graphicsQueueFamilyIndex,
+			                                         surface))
+			{
+				throw std::runtime_error(
+					"Selected device doesn't support surface KHR");
+			}
+
+#if(NDEBUG)
+
+			std::cout
+				<< "Selected physical device: "
+				<< physicalDevice.getProperties().deviceName
+				<< std::endl;
+
+			std::cout
+				<< "Selected graphics queue family index: "
+				<< graphicsQueueFamilyIndex
+				<< std::endl;
+
+			std::cout
+				<< "Selected transfer queue family index: "
+				<< transferQueueFamilyIndex
+				<< std::endl;
+
+			std::cout << std::endl;
+#endif
+
+			return;
+		}
+	}
+
+	throw std::runtime_error("Failed: Can't found a suitable physical device");
+}
+
+void AppBase::createDevice()
+{
+	std::vector<vk::DeviceQueueCreateInfo> deviceQueues;
+
+	if (preferredQueueFamilySetting ==
+		PreferredQueueFamilySettings::eGraphicsTransferTogether)
+	{
+		const std::array<const float, 3> queuePriority = {0.0f, 0.0f, 0.0f};
+
+		const vk::DeviceQueueCreateInfo deviceGraphicQueueCreateInfo
+		{
+			.queueFamilyIndex = graphicsQueueFamilyIndex,
+			.queueCount = 3,
+			.pQueuePriorities = queuePriority.data()
+		};
+
+		deviceQueues.push_back(deviceGraphicQueueCreateInfo);
+	}
+	else
+	{
+		const std::array<const float, 2> queuePriority = {0.0f, 0.0f};
+
+		const vk::DeviceQueueCreateInfo deviceGraphicQueueCreateInfo
+		{
+			.queueFamilyIndex = graphicsQueueFamilyIndex,
+			.queueCount = 2,
+			.pQueuePriorities = queuePriority.data()
+		};
+
+		const auto queuePriorityT = 0.0f;
+
+		const vk::DeviceQueueCreateInfo deviceTransferQueueCreateInfo
+		{
+			.queueFamilyIndex = transferQueueFamilyIndex,
+			.queueCount = 1,
+			.pQueuePriorities = &queuePriorityT
+		};
+
+		deviceQueues.push_back(deviceGraphicQueueCreateInfo);
+		deviceQueues.push_back(deviceTransferQueueCreateInfo);
+	}
+
+	std::vector<const char*> deviceExtensions = {
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
+
+	filterDeviceExtensions(deviceExtensions);
+
+#if (NDEBUG)
+	/* List device validation layers */
+	auto deviceLayers = physicalDevice.enumerateDeviceLayerProperties();
+	std::cout
+		<< "Supported devices layers: "
+		<< std::endl;
+	for (auto layer : deviceLayers)
+	{
+		std::cout << layer.layerName << std::endl;
+	}
+	std::cout << std::endl;
+#endif
+
+	auto deviceFeatures = physicalDevice.getFeatures();
+
+	const vk::DeviceCreateInfo deviceCreateInfo{
+		.queueCreateInfoCount = static_cast<uint32_t>(deviceQueues.size()),
+		.pQueueCreateInfos = deviceQueues.data(),
+		.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size()),
+		.ppEnabledExtensionNames = deviceExtensions.data(),
+		.pEnabledFeatures = &deviceFeatures
+	};
+
+	device = physicalDevice.createDevice(deviceCreateInfo);
+
+	if (preferredQueueFamilySetting ==
+		PreferredQueueFamilySettings::eGraphicsTransferTogether)
+	{
+		graphicsQueue = device.getQueue(graphicsQueueFamilyIndex, 0);
+		presentQueue = device.getQueue(graphicsQueueFamilyIndex, 1);
+		transferQueue = device.getQueue(graphicsQueueFamilyIndex, 2);
+	}
+	else
+	{
+		graphicsQueue = device.getQueue(graphicsQueueFamilyIndex, 0);
+		presentQueue = device.getQueue(graphicsQueueFamilyIndex, 1);
+		transferQueue = device.getQueue(graphicsQueueFamilyIndex, 0);
+	}
+
+	std::cout << "Logical device created!" << std::endl;
+}
+
+void AppBase::createAllocator()
+{
+	allocator = alloc::init(physicalDevice, device, instance);
 }
 
 void AppBase::waitIdle() const
@@ -115,6 +463,7 @@ void AppBase::drawFrame()
 	catch (vk::OutOfDateKHRError error)
 	{
 		updateSwapchain();
+		buildCommandBuffers();
 		return;
 	}
 
@@ -139,7 +488,7 @@ void AppBase::drawFrame()
 		.pSignalSemaphores = signalSemaphores
 	};
 
-	result = graphicQueue.submit(1, &submitInfo, nullptr);
+	result = graphicsQueue.submit(1, &submitInfo, nullptr);
 
 	vk::SwapchainKHR swapchains[] = {swapchain.getSwapchain()};
 
@@ -153,15 +502,16 @@ void AppBase::drawFrame()
 
 	try
 	{
-		result = graphicQueue.presentKHR(presentInfo);
+		result = graphicsQueue.presentKHR(presentInfo);
 	}
 	catch (vk::OutOfDateKHRError error)
 	{
 		updateSwapchain();
+		buildCommandBuffers();
 		return;
 	}
 
-	graphicQueue.waitIdle();
+	graphicsQueue.waitIdle();
 }
 
 void AppBase::setSwapchainDirty()
@@ -171,6 +521,8 @@ void AppBase::setSwapchainDirty()
 
 void AppBase::run()
 {
+	buildCommandBuffers();
+
 	while (!glfwWindowShouldClose(window))
 	{
 		drawFrame();
@@ -178,41 +530,13 @@ void AppBase::run()
 	}
 }
 
-void AppBase::terminate()
-{
-	waitIdle();
-	release();
-
-	context.getInstance().destroySurfaceKHR(surface);
-	context.release();
-
-	glfwDestroyWindow(window);
-	glfwTerminate();
-}
-
-vk::SurfaceKHR AppBase::getGlfwSurfaceKHR(const mvk::Context context,
-                                          GLFWwindow* window)
-{
-	VkSurfaceKHR _surface;
-
-	if (glfwCreateWindowSurface(
-		static_cast<VkInstance>(context.getInstance()),
-		window,
-		nullptr,
-		&_surface) != VK_SUCCESS)
-	{
-		throw std::runtime_error("Failed to create window surface khr");
-	}
-
-	const auto surface = vk::SurfaceKHR(_surface);
-	return surface;
-}
-
 void AppBase::updateSwapchain()
 {
 	device.waitIdle();
 
-	cleanupSwapchain();
+	swapchain.release(device, allocator);
+	renderPass.release(device);
+
 	createSwapchain();
 	createRenderPass();
 	createSwapchainFrames();
@@ -220,22 +544,6 @@ void AppBase::updateSwapchain()
 	needResize = false;
 
 	std::cout << "Swapchain updated!" << std::endl;
-}
-
-bool AppBase::checkSwapchainSupport()
-{
-	auto availableExtensions =
-		physicalDevice.enumerateDeviceExtensionProperties(nullptr);
-
-	std::set<std::string> requiredExtensions(deviceExtensions.begin(),
-	                                         deviceExtensions.end());
-
-	for (const auto& extension : availableExtensions)
-	{
-		requiredExtensions.erase(extension.extensionName);
-	}
-
-	return requiredExtensions.empty();
 }
 
 void AppBase::createSwapchain()
@@ -255,127 +563,128 @@ void AppBase::createRenderPass()
 void AppBase::createSwapchainFrames()
 {
 	swapchain.createSwapchainFrames(device, renderPass.getRenderPass());
+	swapchain.createCommandBuffers(device, commandPool);
 }
 
-void AppBase::createCommandPool(const uint32_t queueFamily)
+void AppBase::createCommandPool()
 {
 	const vk::CommandPoolCreateInfo commandPoolCreateInfo = {
-		.queueFamilyIndex = queueFamily
+		.queueFamilyIndex = graphicsQueueFamilyIndex
 	};
 
 	commandPool = device.createCommandPool(commandPoolCreateInfo);
 }
 
-void AppBase::setupCommandBuffers()
+void AppBase::setupScene()
 {
-	swapchain.createCommandBuffers(device, commandPool);
-	auto frames = swapchain.getSwapchainFrames();
-
-	for (auto i = 0; i < frames.size(); i++)
-	{
-		setupFrameCommandBuffer(i, frames[i]);
-	}
+	const auto size = static_cast<uint32_t>(swapchain.getSwapchainSwainSize());
+	const auto extent = swapchain.getSwapchainExtent();
+	scene.setup(device, allocator, size, extent);
 }
 
-void AppBase::setupFrameCommandBuffer(const int index,
-                                      const SwapchainFrame swapchainFrame)
+void AppBase::buildCommandBuffers()
 {
-	const auto commandBuffer = swapchainFrame.getCommandBuffer();
-	const auto framebuffer = swapchainFrame.getFramebuffer();
-	const auto swapchainExtent = swapchain.getSwapchainExtent();
+	auto frames = swapchain.getSwapchainFrames();
 
-	const vk::CommandBufferBeginInfo commandBufferBeginInfo{};
-	commandBuffer.begin(commandBufferBeginInfo);
-
-	const std::array<float, 4> clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-	std::array<vk::ClearValue, 2> clearValues{};
-	clearValues[0].setColor(clearColor);
-	clearValues[1].setDepthStencil({1.0f, 0});
-
-	const vk::RenderPassBeginInfo renderPassBeginInfo = {
-		.renderPass = renderPass.getRenderPass(),
-		.framebuffer = framebuffer,
-		.renderArea = {
-			.offset = {0, 0},
-			.extent = swapchainExtent
-		},
-		.clearValueCount = static_cast<uint32_t>(clearValues.size()),
-		.pClearValues = clearValues.data()
-	};
-
-	commandBuffer.beginRenderPass(renderPassBeginInfo,
-	                              vk::SubpassContents::eInline);
-
-	const auto objects = scene.getObjects();
-
-	for (auto object : objects)
+	for (const auto frame : frames)
 	{
-		const auto geometry = object->geometry;
-		const auto material = object->material;
-		const auto graphicPipeline = object->graphicPipeline;
-		const auto pipelineLayout = graphicPipeline->getPipelineLayout();
-		const auto pipeline = graphicPipeline->getPipeline();
+		const auto commandBuffer = frame.getCommandBuffer();
+		const auto framebuffer = frame.getFramebuffer();
 
-		std::vector<vk::DescriptorSet> descriptorSets = {
-			scene.getDescriptorSet(0)
+		const auto extent = swapchain.getSwapchainExtent();
+
+		const vk::CommandBufferBeginInfo commandBufferBeginInfo{};
+		commandBuffer.begin(commandBufferBeginInfo);
+
+		const std::array<float, 4> clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+		std::array<vk::ClearValue, 2> clearValues{};
+		clearValues[0].setColor(clearColor);
+		clearValues[1].setDepthStencil({1.0f, 0});
+
+		const vk::RenderPassBeginInfo renderPassBeginInfo = {
+			.renderPass = renderPass.getRenderPass(),
+			.framebuffer = framebuffer,
+			.renderArea = {
+				.offset = {0, 0},
+				.extent = extent
+			},
+			.clearValueCount = static_cast<uint32_t>(clearValues.size()),
+			.pClearValues = clearValues.data()
 		};
 
-		const auto matDescriptorSet = material->getDescriptorSet(0);
+		commandBuffer.beginRenderPass(renderPassBeginInfo,
+		                              vk::SubpassContents::eInline);
 
-		if (matDescriptorSet)
+		const auto objects = scene.getObjects();
+
+		for (auto object : objects)
 		{
-			descriptorSets.push_back(matDescriptorSet);
+			const auto material = object->material;
+			const auto graphicPipeline = object->graphicPipeline;
+			const auto pipelineLayout = graphicPipeline->getPipelineLayout();
+			const auto pipeline = graphicPipeline->getPipeline();
+
+			std::vector<vk::DescriptorSet> descriptorSets = {
+				scene.getDescriptorSet(0)
+			};
+
+			const auto matDescriptorSet = material->getDescriptorSet(0);
+
+			if (matDescriptorSet)
+			{
+				descriptorSets.push_back(matDescriptorSet);
+			}
+
+			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+			                           pipeline);
+
+			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+			                                 pipelineLayout, 0,
+			                                 static_cast<uint32_t>(
+				                                 descriptorSets.size()),
+			                                 descriptorSets.data(), 0, nullptr);
+
+			vk::Viewport viewport = {
+				.x = 0.0f,
+				.y = 0.0f,
+				.width = static_cast<float>(extent.width),
+				.height = static_cast<float>(extent.height),
+				.minDepth = 0.0f,
+				.maxDepth = 1.0f
+			};
+
+			commandBuffer.setViewport(0, viewport);
+
+			vk::Rect2D scissor = {
+				.offset = {0, 0},
+				.extent = extent
+			};
+
+			commandBuffer.setScissor(0, scissor);
+
+			const auto vertexBuffer = object->vertexBuffer;
+			const auto indexBuffer = object->indexBuffer;
+
+			vk::DeviceSize offsets[] = {0};
+
+			commandBuffer.bindVertexBuffers(0, 1,
+			                                &vertexBuffer.buffer,
+			                                offsets);
+
+			if (indexBuffer.buffer)
+			{
+				const auto size = object->indicesCount;
+
+				commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
+				                              vk::IndexType::eUint16);
+
+				commandBuffer.drawIndexed(size, 1, 0, 0, 0);
+			}
 		}
 
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-		                           pipeline);
-
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-		                                 pipelineLayout, 0,
-		                                 static_cast<uint32_t>(
-			                                 descriptorSets.size()),
-		                                 descriptorSets.data(), 0, nullptr);
-
-		vk::Viewport viewport = {
-			.x = 0.0f,
-			.y = 0.0f,
-			.width = static_cast<float>(swapchainExtent.width),
-			.height = static_cast<float>(swapchainExtent.height),
-			.minDepth = 0.0f,
-			.maxDepth = 1.0f
-		};
-
-		commandBuffer.setViewport(0, viewport);
-
-		vk::Rect2D scissor = {
-			.offset = {0, 0},
-			.extent = swapchainExtent
-		};
-
-		commandBuffer.setScissor(0, scissor);
-
-		const auto vertexBuffer = geometry->getVertexBuffer();
-		const auto indexBuffer = geometry->getIndexBuffer();
-
-		vk::DeviceSize offsets[] = {0};
-
-		commandBuffer.bindVertexBuffers(0, 1,
-		                                &vertexBuffer.buffer,
-		                                offsets);
-
-		if (indexBuffer.buffer)
-		{
-			const auto size = geometry->getIndexCount();
-
-			commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
-			                              vk::IndexType::eUint16);
-
-			commandBuffer.drawIndexed(size, 1, 0, 0, 0);
-		}
+		commandBuffer.endRenderPass();
+		commandBuffer.end();
 	}
-
-	commandBuffer.endRenderPass();
-	commandBuffer.end();
 }
 
 void AppBase::createSemaphores()
@@ -385,13 +694,7 @@ void AppBase::createSemaphores()
 	renderFinishedSemaphore = device.createSemaphore(semaphoreCreateInfo);
 }
 
-void AppBase::cleanupSwapchain()
-{
-	swapchain.release(device, allocator);
-	renderPass.release(device);
-}
-
-void AppBase::update()
+void AppBase::update() const
 {
 	const auto currentTime = std::chrono::high_resolution_clock::now();
 	const auto time = std::chrono::duration<float, std::chrono::seconds::period>
@@ -400,143 +703,8 @@ void AppBase::update()
 	scene.update(allocator, time, swapchain.getSwapchainExtent());
 }
 
-alloc::Buffer AppBase::createVertexBufferObject(
-	std::vector<Vertex> vertices) const
-{
-	const auto size =
-		static_cast<vk::DeviceSize>(sizeof vertices.at(0) * vertices.
-			size());
-	const auto stagingVertexBuffer =
-		alloc::allocateStagingTransferBuffer(allocator, vertices.data(), size);
-	const auto vertexBuffer = createGpuVertexBuffer(allocator, size);
-	copyCpuToGpuBuffer(device, commandPool, transferQueue,
-	                   stagingVertexBuffer, vertexBuffer,
-	                   size);
-	alloc::deallocateBuffer(allocator, stagingVertexBuffer);
-
-	return vertexBuffer;
-}
-
-alloc::Buffer AppBase::createIndexBufferObject(
-	std::vector<uint16_t> indices) const
-{
-	const auto size =
-		static_cast<vk::DeviceSize>(sizeof indices.at(0) * indices.
-			size());
-	const auto stagingVertexBuffer =
-		alloc::allocateStagingTransferBuffer(allocator, indices.data(), size);
-	const auto indexBuffer = createGpuIndexBuffer(allocator, size);
-	alloc::copyCpuToGpuBuffer(device, commandPool, transferQueue,
-	                          stagingVertexBuffer, indexBuffer, size);
-	alloc::deallocateBuffer(allocator, stagingVertexBuffer);
-
-	return indexBuffer;
-}
-
-alloc::Image AppBase::createTextureBufferObject(unsigned char* pixels,
-                                                const uint32_t width,
-                                                const uint32_t height,
-                                                const vk::Format format) const
-{
-	const vk::DeviceSize imageSize = width * height * 4;
-	const vk::BufferCreateInfo bufferCreateInfo = {
-		.size = imageSize,
-		.usage = vk::BufferUsageFlagBits::eTransferSrc
-	};
-
-	const auto stagingBuffer =
-		alloc::allocateMappedCpuToGpuBuffer(allocator, bufferCreateInfo,
-		                                    pixels);
-
-	const vk::Extent3D imageExtent = {
-		.width = width,
-		.height = height,
-		.depth = 1
-	};
-
-	const vk::ImageCreateInfo imageCreateInfo = {
-		.imageType = vk::ImageType::e2D,
-		.format = format,
-		.extent = imageExtent,
-		.mipLevels = 1,
-		.arrayLayers = 1,
-		.samples = vk::SampleCountFlagBits::e1,
-		.tiling = vk::ImageTiling::eOptimal,
-		.usage = vk::ImageUsageFlagBits::eTransferDst |
-		vk::ImageUsageFlagBits::eSampled,
-		.sharingMode = vk::SharingMode::eExclusive,
-		.initialLayout = vk::ImageLayout::eUndefined,
-	};
-
-	const auto imageBuffer = alloc::allocateGpuOnlyImage(allocator,
-	                                                     imageCreateInfo);
-
-	const vk::BufferImageCopy bufferImageCopy = {
-		.bufferOffset = 0,
-		.bufferRowLength = 0,
-		.bufferImageHeight = 0,
-		.imageSubresource = {
-			.aspectMask = vk::ImageAspectFlagBits::eColor,
-			.mipLevel = 0,
-			.baseArrayLayer = 0,
-			.layerCount = 1,
-		},
-		.imageOffset = {0, 0},
-		.imageExtent = imageExtent,
-	};
-
-	alloc::transitionImageLayout(device, commandPool, graphicQueue,
-	                             imageBuffer.image, format,
-	                             vk::ImageLayout::eUndefined,
-	                             vk::ImageLayout::eTransferDstOptimal);
-
-	alloc::copyCpuBufferToGpuImage(device, commandPool, graphicQueue,
-	                               stagingBuffer, imageBuffer, bufferImageCopy);
-
-	alloc::transitionImageLayout(device, commandPool, graphicQueue,
-	                             imageBuffer.image, format,
-	                             vk::ImageLayout::eTransferDstOptimal,
-	                             vk::ImageLayout::eShaderReadOnlyOptimal);
-
-	deallocateBuffer(allocator, stagingBuffer);
-
-	return imageBuffer;
-}
-
-static alloc::Buffer createGpuVertexBuffer(const vma::Allocator allocator,
-                                           const vk::DeviceSize size)
-{
-	const vk::BufferCreateInfo bufferCreateInfo = {
-		.size = static_cast<vk::DeviceSize>(size),
-		.usage = vk::BufferUsageFlagBits::eTransferDst |
-		vk::BufferUsageFlagBits::eVertexBuffer,
-		.sharingMode = vk::SharingMode::eExclusive
-	};
-
-	const auto buffer =
-		alloc::allocateGpuOnlyBuffer(allocator, bufferCreateInfo);
-
-	return buffer;
-}
-
-static alloc::Buffer createGpuIndexBuffer(const vma::Allocator allocator,
-                                          const vk::DeviceSize size)
-{
-	const vk::BufferCreateInfo bufferCreateInfo = {
-		.size = static_cast<vk::DeviceSize>(size),
-		.usage = vk::BufferUsageFlagBits::eTransferDst |
-		vk::BufferUsageFlagBits::eIndexBuffer,
-		.sharingMode = vk::SharingMode::eExclusive
-	};
-
-	const auto buffer =
-		alloc::allocateGpuOnlyBuffer(allocator, bufferCreateInfo);
-
-	return buffer;
-}
-
-void framebufferResizeCallback(GLFWwindow* window, int width,
-                               int height)
+void AppBase::framebufferResizeCallback(GLFWwindow* window, int width,
+                                        int height)
 {
 	const auto app =
 		reinterpret_cast<AppBase*>(glfwGetWindowUserPointer(window));

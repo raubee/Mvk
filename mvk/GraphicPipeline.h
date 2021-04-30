@@ -11,7 +11,7 @@ namespace mvk
 
 	public:
 		
-		GraphicPipeline(vk::Device device,
+		void build(vk::Device device,
 			vk::Extent2D extent,
 			vk::RenderPass renderPass,
 			std::vector<vk::PipelineShaderStageCreateInfo>

@@ -2,15 +2,18 @@
 
 using namespace mvk;
 
-BaseMaterial::BaseMaterial(const vk::Device device,
-                           const BaseMaterialDescription description) :
-	Material(device,
-	         new Shader(device, "shaders/vert.spv",
-	                    vk::ShaderStageFlagBits::eVertex),
-	         new Shader(device, "shaders/frag.spv",
-	                    vk::ShaderStageFlagBits::eFragment)),
-	albedo(description.albedo)
+void BaseMaterial::load(const vk::Device device,
+                        const BaseMaterialDescription description)
+
 {
+	albedo = description.albedo;
+
+	Material::load(device,
+	               new Shader(device, "shaders/vert.spv",
+	                          vk::ShaderStageFlagBits::eVertex),
+	               new Shader(device, "shaders/frag.spv",
+	                          vk::ShaderStageFlagBits::eFragment));
+
 	createDescriptorSetLayout(device);
 	createDescriptorPool(device);
 	createDescriptorSets(device);
@@ -89,9 +92,4 @@ void BaseMaterial::createDescriptorSets(const vk::Device device)
 	};
 
 	descriptorSets = device.allocateDescriptorSets(descriptorSetAllocateInfo);
-}
-
-void BaseMaterial::release(const vk::Device device)
-{
-	Material::release(device);
 }

@@ -9,6 +9,6 @@ namespace mvk
 	class NormalMaterial : public Material
 	{
 	public:
-		NormalMaterial(vk::Device device);
+		void load(vk::Device device);
 	};
 }

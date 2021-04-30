@@ -47,6 +47,5 @@ Shader::Shader(const vk::Device device, const std::string& filename,
 
 void Shader::release(const vk::Device device) const
 {
-	if (shaderModule)
-		device.destroyShaderModule(shaderModule);
+	device.destroyShaderModule(shaderModule);
 }

@@ -2,98 +2,78 @@
 #include "BaseMaterial.h"
 #include "NormalMaterial.h"
 
-#define TINYOBJLOADER_IMPLEMENTATION
-#include "../3rdParty/tiny_obj_loader.h"
-#include "../3rdParty/stb_image.h"
-
 class MultiViewer : public mvk::AppBase
 {
-	void loadObjFile(std::vector<mvk::Vertex>& vertices,
-	                 std::vector<uint16_t>& indices) const
+	struct Textures
 	{
-		const auto path = "assets/models/ganesha.obj";
-		tinyobj::attrib_t attribute;
-		std::vector<tinyobj::shape_t> shapes;
-		std::vector<tinyobj::material_t> materials;
-		std::string warn, err;
-
-		if (!LoadObj(&attribute, &shapes, &materials, &err, path,
-		             "", true))
-		{
-			throw std::runtime_error("Failed to load obj file" + err + warn);
-		}
-
-		for (const auto& shape : shapes)
-		{
-			for (const auto& index : shape.mesh.indices)
-			{
-				mvk::Vertex vertex{};
-				vertex.position = {
-					attribute.vertices[3 * index.vertex_index + 0],
-					attribute.vertices[3 * index.vertex_index + 1],
-					attribute.vertices[3 * index.vertex_index + 2],
-				};
-				vertex.texCoord = {
-					attribute.texcoords[2 * index.texcoord_index + 0],
-					1.0f - attribute.texcoords[2 * index.texcoord_index + 1]
-				};
-				vertex.color = {1.0f, 1.0f, 1.0f};
-				vertices.push_back(vertex);
-				indices.push_back(static_cast<uint16_t>(indices.size()));
-			}
-		}
+		mvk::Texture2D albedo;
 	}
+	textures;
 
-public:
-	MultiViewer()
+	struct Materials
 	{
-		std::vector<mvk::Vertex> vertices;
-		std::vector<uint16_t> indices;
+		mvk::NormalMaterial normal;
+		mvk::BaseMaterial standard;
+	}
+	materials;
 
-		loadObjFile(vertices, indices);
+	struct Meshes
+	{
+		mvk::Mesh ganesh;
+		mvk::Mesh plane;
+	} models;
 
-		const auto vertexBuffer = createVertexBufferObject(vertices);
-		const auto indexBuffer = createIndexBufferObject(indices);
+	struct GraphicPipelines
+	{
+		mvk::GraphicPipeline normal;
+		mvk::GraphicPipeline standard;
+	}
+	pipelines;
+
+
+	void loadGanesh()
+	{
+		const auto modelPath = "assets/models/ganesha.obj";
+
+		models.ganesh.loadFromFile(allocator, device, commandPool,
+		                           transferQueue, modelPath);
 
 		const auto albedoPath = "assets/models/textures/Ganesha_BaseColor.jpg";
 
-		auto albedo = mvk::Texture2D(albedoPath, vk::Format::eR8G8B8A8Srgb);
-		const auto image = createTextureBufferObject(albedo.getPixels(),
-		                                             albedo.getWidth(),
-		                                             albedo.getHeight(),
-		                                             albedo.getFormat());
-		albedo.init(device, image);
+		textures.albedo.loadFromFile(allocator, device, commandPool,
+		                             transferQueue, albedoPath,
+		                             vk::Format::eR8G8B8A8Srgb);
 
 		mvk::BaseMaterialDescription description;
-		description.albedo = &albedo;
+		description.albedo = &textures.albedo;
 
-		auto material = mvk::BaseMaterial(device, description);
+		materials.standard.load(device, description);
 
 		std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts = {
 			scene.getDescriptorSetLayout(),
-			material.getDescriptorSetLayout()
+			materials.standard.getDescriptorSetLayout()
 		};
 
-		mvk::GraphicPipeline graphicPipeline(device,
-		                                     swapchain.getSwapchainExtent(),
-		                                     renderPass.getRenderPass(),
-		                                     material.
-		                                     getPipelineShaderStageCreateInfo(),
-		                                     descriptorSetLayouts.data(),
-		                                     static_cast<int32_t>(
-			                                     descriptorSetLayouts.
-			                                     size()));
+		pipelines.standard.build(device,
+		                         swapchain.getSwapchainExtent(),
+		                         renderPass.getRenderPass(),
+		                         materials
+		                         .standard.getPipelineShaderStageCreateInfo(),
+		                         descriptorSetLayouts.data(),
+		                         static_cast<int32_t>(
+			                         descriptorSetLayouts.
+			                         size()));
 
-		const auto verticesCount = static_cast<uint32_t>(vertices.size());
-		const auto indicesCount = static_cast<uint32_t>(indices.size());
-		auto geometry = mvk::Geometry(vertexBuffer, verticesCount,
-		                              indexBuffer, indicesCount);
 
-		auto mesh = mvk::Mesh(&geometry, &material, &graphicPipeline);
+		models.ganesh.setMaterial(&materials.standard);
+		models.ganesh.setGraphicPipeline(&pipelines.standard);
 
-		scene.addObject(&mesh);
+		scene.addObject(&models.ganesh);
+	}
 
-		const auto verticesP = std::vector<mvk::Vertex>({
+	void loadPlane()
+	{
+		auto vertices = std::vector<mvk::Vertex>({
 			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
 			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
 			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
@@ -105,46 +85,79 @@ public:
 			{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
 		});
 
-		const auto indicesP = std::vector<uint16_t>({
+		auto indices = std::vector<uint16_t>({
 			0, 1, 2, 2, 3, 0,
 			4, 5, 6, 6, 7, 4
 		});
 
-		const auto vertexBufferP = createVertexBufferObject(verticesP);
-		const auto indexBufferP = createIndexBufferObject(indicesP);
-		const auto verticesCountP = static_cast<uint32_t>(verticesP.size());
-		const auto indicesCountP = static_cast<uint32_t>(indicesP.size());
-		auto planeGeo = mvk::Geometry(vertexBufferP, verticesCountP,
-		                              indexBufferP, indicesCountP);
+		models.plane.verticesCount = static_cast<uint32_t>(vertices.size());
+		models.plane.indicesCount = static_cast<uint32_t>(indices.size());
 
-		auto materialP = mvk::NormalMaterial(device);
+		const auto vSize =
+			static_cast<vk::DeviceSize>(sizeof vertices.at(0) *
+				models.plane.verticesCount);
 
-		std::array<vk::DescriptorSetLayout, 1> descriptorSetLayoutsP = {
+		models.plane.vertexBuffer = mvk::alloc::transferDataSetToGpuBuffer(
+			allocator, device, commandPool, transferQueue, vertices.data(),
+			vSize, vk::BufferUsageFlagBits::eVertexBuffer);
+
+		const auto iSize =
+			static_cast<vk::DeviceSize>(sizeof indices.at(0) *
+				models.plane.indicesCount);
+
+		models.plane.indexBuffer = mvk::alloc::transferDataSetToGpuBuffer(
+			allocator, device, commandPool, transferQueue, indices.data(),
+			iSize, vk::BufferUsageFlagBits::eIndexBuffer);
+
+		materials.normal.load(device);
+
+		std::array<vk::DescriptorSetLayout, 1> descriptorSetLayouts = {
 			scene.getDescriptorSetLayout()
 		};
 
-		mvk::GraphicPipeline graphicPipelineP(device,
-		                                      swapchain.getSwapchainExtent(),
-		                                      renderPass.getRenderPass(),
-		                                      materialP.
-		                                      getPipelineShaderStageCreateInfo(),
-		                                      descriptorSetLayoutsP.data(),
-		                                      static_cast<int32_t>(
-			                                      descriptorSetLayoutsP.
-			                                      size()));
+		pipelines.normal.build(device,
+		                       swapchain.getSwapchainExtent(),
+		                       renderPass.getRenderPass(),
+		                       materials.normal.
+		                                 getPipelineShaderStageCreateInfo(),
+		                       descriptorSetLayouts.data(),
+		                       static_cast<int32_t>(
+			                       descriptorSetLayouts.
+			                       size()));
 
-		auto plane = mvk::Mesh(&planeGeo, &materialP, &graphicPipelineP);
+		models.plane.setMaterial(&materials.normal);
+		models.plane.setGraphicPipeline(&pipelines.normal);
 
-		scene.addObject(&plane);
+		scene.addObject(&models.plane);
+	}
 
-		setupCommandBuffers();
+public:
+	MultiViewer() : AppBase(mvk::AppInfo{
+		.appName = "MultiViewer"
+	})
+	{
+		loadGanesh();
+		loadPlane();
+	}
+
+	~MultiViewer()
+	{
+		textures.albedo.release(device, allocator);
+		models.ganesh.release(allocator);
+		materials.standard.release(device);
+		pipelines.standard.release(device);
+		models.plane.release(allocator);
+		materials.normal.release(device);
+		pipelines.normal.release(device);
 	}
 };
 
+MultiViewer* multiViewer;
+
 int main()
 {
-	MultiViewer app;
-	app.run();
-	app.terminate();
+	multiViewer = new MultiViewer();
+	multiViewer->run();
+	delete multiViewer;
 	return EXIT_SUCCESS;
 }

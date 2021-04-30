@@ -23,8 +23,10 @@ namespace mvk
 		std::vector<vk::DescriptorSet> descriptorSets;
 
 	public:
-		Material(vk::Device device, Shader* vertShader, Shader* fragShader,
-		         Shader* geoShader = nullptr, Shader* tesShader = nullptr);
+		virtual void load(vk::Device device, Shader* vertShader,
+		                  Shader* fragShader,
+		                  Shader* geoShader = nullptr,
+		                  Shader* tesShader = nullptr);
 
 		virtual void release(vk::Device device);
 
