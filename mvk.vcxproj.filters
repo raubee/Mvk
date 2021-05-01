@@ -33,16 +33,10 @@
     <ClInclude Include="mvk\BaseMaterial.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
-    <ClInclude Include="mvk\Geometry.h">
-      <Filter>Fichiers d%27en-tête</Filter>
-    </ClInclude>
     <ClInclude Include="mvk\GraphicPipeline.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
     <ClInclude Include="mvk\Material.h">
-      <Filter>Fichiers d%27en-tête</Filter>
-    </ClInclude>
-    <ClInclude Include="mvk\Mesh.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
     <ClInclude Include="mvk\NormalMaterial.h">
@@ -81,6 +75,12 @@
     <ClInclude Include="mvk\Utils.hpp">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="mvk\Model.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="mvk\Device.hpp">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="mvk\AppBase.cpp">
@@ -89,16 +89,10 @@
     <ClCompile Include="mvk\BaseMaterial.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
-    <ClCompile Include="mvk\Geometry.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
     <ClCompile Include="mvk\GraphicPipeline.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
     <ClCompile Include="mvk\Material.cpp">
-      <Filter>Fichiers sources</Filter>
-    </ClCompile>
-    <ClCompile Include="mvk\Mesh.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
     <ClCompile Include="mvk\NormalMaterial.cpp">
@@ -123,6 +117,9 @@
       <Filter>Fichiers sources</Filter>
     </ClCompile>
     <ClCompile Include="mvk\VulkanVma.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="mvk\Model.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
   </ItemGroup>

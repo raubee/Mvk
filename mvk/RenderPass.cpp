@@ -2,7 +2,7 @@
 
 using namespace mvk;
 
-void RenderPass::create(const vk::Device device,
+void RenderPass::create(const Device device,
                         const vk::Format colorFormat,
                         const vk::Format depthFormat)
 {
@@ -60,10 +60,10 @@ void RenderPass::create(const vk::Device device,
 		.pSubpasses = &subPass
 	};
 
-	renderPass = device.createRenderPass(renderPassCreateInfo);
+	renderPass = vk::Device(device).createRenderPass(renderPassCreateInfo);
 }
 
-void RenderPass::release(const vk::Device device) const
+void RenderPass::release(const Device device)
 {
-	device.destroyRenderPass(renderPass);
+	vk::Device(device).destroyRenderPass(renderPass);
 }

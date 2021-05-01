@@ -10,9 +10,9 @@ public:
 	}
 	materials;
 
-	struct Meshes
+	struct Models
 	{
-		mvk::Mesh plane;
+		mvk::Model plane;
 	}
 	models;
 
@@ -51,17 +51,21 @@ public:
 			static_cast<vk::DeviceSize>(sizeof vertices.at(0) *
 				models.plane.verticesCount);
 
-		models.plane.vertexBuffer = mvk::alloc::transferDataSetToGpuBuffer(
-			allocator, device, commandPool, transferQueue, vertices.data(),
-			vSize, vk::BufferUsageFlagBits::eVertexBuffer);
+		models.plane.vertexBuffer =
+			device.transferDataSetToGpuBuffer(transferQueue,
+			                                  vertices.data(), vSize,
+			                                  vk::BufferUsageFlagBits::
+			                                  eVertexBuffer);
 
 		const auto iSize =
 			static_cast<vk::DeviceSize>(sizeof indices.at(0) *
 				models.plane.indicesCount);
 
-		models.plane.indexBuffer = mvk::alloc::transferDataSetToGpuBuffer(
-			allocator, device, commandPool, transferQueue, indices.data(),
-			iSize, vk::BufferUsageFlagBits::eIndexBuffer);
+		models.plane.indexBuffer =
+			device.transferDataSetToGpuBuffer(transferQueue, indices.data(),
+			                                  iSize,
+			                                  vk::BufferUsageFlagBits::
+			                                  eIndexBuffer);
 
 		materials.normal.load(device);
 
@@ -87,7 +91,7 @@ public:
 
 	~SimpleViewer()
 	{
-		models.plane.release(allocator);
+		models.plane.release(device);
 		materials.normal.release(device);
 		pipelines.normal.release(device);
 	}

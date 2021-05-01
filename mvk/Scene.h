@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Mesh.h"
+#include "Model.h"
 #include "./VulkanVma.h"
 
 #define GLM_FORCE_RADIANS
@@ -12,7 +12,7 @@ namespace mvk
 {
 	class Scene
 	{
-		std::vector<Mesh*> meshes;
+		std::vector<Model*> models;
 
 		alloc::Buffer uniformBuffer;
 		vk::DescriptorSetLayout descriptorSetLayout;
@@ -20,29 +20,24 @@ namespace mvk
 		std::vector<vk::DescriptorSet> descriptorSets;
 
 	public:
-		Scene() : meshes(0)
+		Scene() : models(0)
 		{
 		}
 
-		void setup(vk::Device device,
-		          vma::Allocator allocator,
-		          uint32_t size,
-		          vk::Extent2D extent);
+		void setup(Device device, uint32_t size, vk::Extent2D extent);
+		void update(Device device, float time, vk::Extent2D extent) const;
+		void release(Device device) const;
 
-		void update(vma::Allocator allocator, float time, vk::Extent2D extent) const;
-
-		void release(vk::Device device, vma::Allocator allocator) const;
-
-		void createDescriptorSetLayout(vk::Device device);
-		void createDescriptorPool(vk::Device device, uint32_t size);
-		void createDescriptorSets(vk::Device device, uint32_t size);
-		void createUniformBufferObject(vma::Allocator allocator);
-		void updateDescriptorSets(vk::Device device);
-		void updateUniformBufferObject(vma::Allocator allocator, float time,
+		void createDescriptorSetLayout(Device device);
+		void createDescriptorPool(Device device, uint32_t size);
+		void createDescriptorSets(Device device, uint32_t size);
+		void createUniformBufferObject(Device device);
+		void updateDescriptorSets(Device device);
+		void updateUniformBufferObject(Device device, float time,
 		                               vk::Extent2D extent) const;
 
-		void addObject(Mesh* mesh) { meshes.push_back(mesh); }
-		std::vector<Mesh*> getObjects() const { return meshes; }
+		void addObject(Model* mesh) { models.push_back(mesh); }
+		std::vector<Model*> getObjects() const { return models; }
 
 		vk::DescriptorSetLayout getDescriptorSetLayout() const
 		{

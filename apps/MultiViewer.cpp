@@ -17,11 +17,12 @@ class MultiViewer : public mvk::AppBase
 	}
 	materials;
 
-	struct Meshes
+	struct Models
 	{
-		mvk::Mesh ganesh;
-		mvk::Mesh plane;
-	} models;
+		mvk::Model ganesh;
+		mvk::Model plane;
+	}
+	models;
 
 	struct GraphicPipelines
 	{
@@ -33,15 +34,14 @@ class MultiViewer : public mvk::AppBase
 
 	void loadGanesh()
 	{
-		const auto modelPath = "assets/models/ganesha.obj";
+		const auto modelPath = "assets/models/ganesha/ganesha.obj";
 
-		models.ganesh.loadFromFile(allocator, device, commandPool,
-		                           transferQueue, modelPath);
+		models.ganesh.loadFromFile(device, transferQueue, modelPath);
 
-		const auto albedoPath = "assets/models/textures/Ganesha_BaseColor.jpg";
+		const auto albedoPath =
+			"assets/models/ganesha/textures/Ganesha_BaseColor.jpg";
 
-		textures.albedo.loadFromFile(allocator, device, commandPool,
-		                             transferQueue, albedoPath,
+		textures.albedo.loadFromFile(device, transferQueue, albedoPath,
 		                             vk::Format::eR8G8B8A8Srgb);
 
 		mvk::BaseMaterialDescription description;
@@ -97,17 +97,21 @@ class MultiViewer : public mvk::AppBase
 			static_cast<vk::DeviceSize>(sizeof vertices.at(0) *
 				models.plane.verticesCount);
 
-		models.plane.vertexBuffer = mvk::alloc::transferDataSetToGpuBuffer(
-			allocator, device, commandPool, transferQueue, vertices.data(),
-			vSize, vk::BufferUsageFlagBits::eVertexBuffer);
+		models.plane.vertexBuffer =
+			device.transferDataSetToGpuBuffer(transferQueue, vertices.data(),
+			                                  vSize,
+			                                  vk::BufferUsageFlagBits::
+			                                  eVertexBuffer);
 
 		const auto iSize =
 			static_cast<vk::DeviceSize>(sizeof indices.at(0) *
 				models.plane.indicesCount);
 
-		models.plane.indexBuffer = mvk::alloc::transferDataSetToGpuBuffer(
-			allocator, device, commandPool, transferQueue, indices.data(),
-			iSize, vk::BufferUsageFlagBits::eIndexBuffer);
+		models.plane.indexBuffer =
+			device.transferDataSetToGpuBuffer(transferQueue, indices.data(),
+			                                  iSize,
+			                                  vk::BufferUsageFlagBits::
+			                                  eIndexBuffer);
 
 		materials.normal.load(device);
 
@@ -142,11 +146,11 @@ public:
 
 	~MultiViewer()
 	{
-		textures.albedo.release(device, allocator);
-		models.ganesh.release(allocator);
+		textures.albedo.release(device);
+		models.ganesh.release(device);
 		materials.standard.release(device);
 		pipelines.standard.release(device);
-		models.plane.release(allocator);
+		models.plane.release(device);
 		materials.normal.release(device);
 		pipelines.normal.release(device);
 	}

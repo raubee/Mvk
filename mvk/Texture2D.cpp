@@ -5,16 +5,14 @@
 
 using namespace mvk;
 
-void Texture2D::loadFromFile(const vma::Allocator allocator,
-                             const vk::Device device,
-                             const vk::CommandPool commandPool,
+void Texture2D::loadFromFile(const Device device,
                              const vk::Queue transferQueue,
                              const char* path,
                              const vk::Format format)
 {
 	int w, h, c;
 	const auto pixels = stbi_load(path, &w, &h, &c,
-	                   STBI_rgb_alpha);
+	                              STBI_rgb_alpha);
 
 	if (!pixels)
 	{
@@ -25,10 +23,8 @@ void Texture2D::loadFromFile(const vma::Allocator allocator,
 	this->width = static_cast<uint32_t>(w);
 	this->height = static_cast<uint32_t>(h);
 	this->format = format;
-	this->image = alloc::transferImageDataToGpuImage(allocator, device,
-	                                                 commandPool, transferQueue,
-	                                                 pixels, width, height,
-	                                                 format);
+	this->image = device.transferImageDataToGpuImage(transferQueue, pixels,
+	                                                 width, height, format);
 	createImageView(device);
 	createSampler(device);
 
@@ -36,7 +32,7 @@ void Texture2D::loadFromFile(const vma::Allocator allocator,
 }
 
 
-void Texture2D::createImageView(const vk::Device device)
+void Texture2D::createImageView(const Device device)
 {
 	const vk::ImageViewCreateInfo imageViewCreateInfo = {
 		.image = image.image,
@@ -52,10 +48,10 @@ void Texture2D::createImageView(const vk::Device device)
 		}
 	};
 
-	imageView = device.createImageView(imageViewCreateInfo);
+	imageView = vk::Device(device).createImageView(imageViewCreateInfo);
 }
 
-void Texture2D::createSampler(const vk::Device device)
+void Texture2D::createSampler(const Device device)
 {
 	const vk::SamplerCreateInfo samplerCreateInfo = {
 		.magFilter = vk::Filter::eLinear,
@@ -75,13 +71,12 @@ void Texture2D::createSampler(const vk::Device device)
 		.unnormalizedCoordinates = vk::Bool32(false),
 	};
 
-	sampler = device.createSampler(samplerCreateInfo);
+	sampler = vk::Device(device).createSampler(samplerCreateInfo);
 }
 
-void Texture2D::release(const vk::Device device,
-                        const vma::Allocator allocator) const
+void Texture2D::release(const Device device) const
 {
-	device.destroySampler(sampler);
-	device.destroyImageView(imageView);
-	deallocateImage(allocator, image);
+	vk::Device(device).destroySampler(sampler);
+	vk::Device(device).destroyImageView(imageView);
+	device.destroyImage(image);
 }

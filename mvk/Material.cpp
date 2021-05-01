@@ -2,8 +2,7 @@
 
 using namespace mvk;
 
-void Material::load(const vk::Device device,
-                    Shader* vertShader,
+void Material::load(Shader* vertShader,
                     Shader* fragShader,
                     Shader* geoShader,
                     Shader* tesShader)
@@ -14,7 +13,7 @@ void Material::load(const vk::Device device,
 	this->tesShader = tesShader;
 }
 
-void Material::release(const vk::Device device)
+void Material::release(const Device device)
 {
 	if (vertShader != nullptr)
 		vertShader->release(device);
@@ -28,8 +27,8 @@ void Material::release(const vk::Device device)
 	if (tesShader != nullptr)
 		tesShader->release(device);
 
-	device.destroyDescriptorPool(descriptorPool);
-	device.destroyDescriptorSetLayout(descriptorSetLayout);
+	vk::Device(device).destroyDescriptorPool(descriptorPool);
+	vk::Device(device).destroyDescriptorSetLayout(descriptorSetLayout);
 }
 
 std::vector<vk::PipelineShaderStageCreateInfo> Material::

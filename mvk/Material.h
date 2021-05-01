@@ -23,12 +23,12 @@ namespace mvk
 		std::vector<vk::DescriptorSet> descriptorSets;
 
 	public:
-		virtual void load(vk::Device device, Shader* vertShader,
+		virtual void load(Shader* vertShader,
 		                  Shader* fragShader,
 		                  Shader* geoShader = nullptr,
 		                  Shader* tesShader = nullptr);
 
-		virtual void release(vk::Device device);
+		virtual void release(Device device);
 
 		std::vector<vk::PipelineShaderStageCreateInfo>
 		getPipelineShaderStageCreateInfo() const;

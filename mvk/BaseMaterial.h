@@ -20,12 +20,12 @@ namespace mvk
 		
 		Texture2D* albedo;
 
-		void load(vk::Device device,
+		void load(Device device,
 		          BaseMaterialDescription description = defaultDescription);
 
-		void createDescriptorPool(vk::Device device);
-		void updateDescriptorSets(vk::Device device);
-		void createDescriptorSetLayout(vk::Device device);
-		void createDescriptorSets(vk::Device device);
+		void createDescriptorPool(Device device);
+		void updateDescriptorSets(Device device);
+		void createDescriptorSetLayout(Device device);
+		void createDescriptorSets(Device device);
 	};
 }

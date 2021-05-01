@@ -16,9 +16,8 @@ AppBase::AppBase(const AppInfo info)
 	createSurfaceKHR();
 	pickPhysicalDevice();
 	createDevice();
-	createAllocator();
+	createQueues();
 	createSemaphores();
-	createCommandPool();
 	updateSwapchain();
 	setupScene();
 }
@@ -27,15 +26,13 @@ AppBase::~AppBase()
 {
 	waitIdle();
 
-	scene.release(device, allocator);
+	scene.release(device);
 	renderPass.release(device);
-	swapchain.release(device, allocator);
+	swapchain.release(device);
 
-	device.destroyCommandPool(commandPool);
-	device.destroySemaphore(imageAvailableSemaphore);
-	device.destroySemaphore(renderFinishedSemaphore);
+	vk::Device(device).destroySemaphore(imageAvailableSemaphore);
+	vk::Device(device).destroySemaphore(renderFinishedSemaphore);
 
-	allocator.destroy();
 	device.destroy();
 
 	instance.destroySurfaceKHR(surface);
@@ -132,70 +129,6 @@ void AppBase::filterAvailableLayers(std::vector<const char*>& layers)
 	for (auto layer : retainLayers)
 	{
 		layers.push_back(layer);
-	}
-}
-
-void AppBase::filterDeviceExtensions(std::vector<const char*>& extensions) const
-{
-	auto availableLayers = physicalDevice.enumerateDeviceExtensionProperties();
-
-#if (NDEBUG)
-	/* print supported extensions */
-	std::cout
-		<< "Available device extensions: "
-		<< std::endl;
-
-	std::for_each(availableLayers.begin(),
-	              availableLayers.end(),
-	              [](auto const& e)
-	              {
-		              std::cout << e.extensionName << std::endl;
-	              }
-	);
-	std::cout << std::endl;
-#endif
-
-	std::vector<const char*> retainExtensions(0);
-
-	for (auto layer : extensions)
-	{
-		auto found = std::find_if(availableLayers.begin(),
-		                          availableLayers.end(),
-		                          [layer](auto const& available)
-		                          {
-			                          return std::strcmp(
-					                          available.extensionName, layer)
-				                          == 0;
-		                          });
-
-		if (found != availableLayers.end())
-		{
-			retainExtensions.push_back(layer);
-		}
-	}
-
-#if (NDEBUG)
-	/* print supported extensions */
-	std::cout
-		<< "Selected device extensions: "
-		<< std::endl;
-
-	std::for_each(retainExtensions.begin(),
-	              retainExtensions.end(),
-	              [](auto const& e)
-	              {
-		              std::cout << e << std::endl;
-	              }
-	);
-
-	std::cout << std::endl;
-#endif
-
-	extensions.clear();
-
-	for (auto layer : retainExtensions)
-	{
-		extensions.push_back(layer);
 	}
 }
 
@@ -349,97 +282,29 @@ void AppBase::pickPhysicalDevice()
 
 void AppBase::createDevice()
 {
-	std::vector<vk::DeviceQueueCreateInfo> deviceQueues;
-
-	if (preferredQueueFamilySetting ==
-		PreferredQueueFamilySettings::eGraphicsTransferTogether)
-	{
-		const std::array<const float, 3> queuePriority = {0.0f, 0.0f, 0.0f};
-
-		const vk::DeviceQueueCreateInfo deviceGraphicQueueCreateInfo
-		{
-			.queueFamilyIndex = graphicsQueueFamilyIndex,
-			.queueCount = 3,
-			.pQueuePriorities = queuePriority.data()
-		};
-
-		deviceQueues.push_back(deviceGraphicQueueCreateInfo);
-	}
-	else
-	{
-		const std::array<const float, 2> queuePriority = {0.0f, 0.0f};
-
-		const vk::DeviceQueueCreateInfo deviceGraphicQueueCreateInfo
-		{
-			.queueFamilyIndex = graphicsQueueFamilyIndex,
-			.queueCount = 2,
-			.pQueuePriorities = queuePriority.data()
-		};
-
-		const auto queuePriorityT = 0.0f;
-
-		const vk::DeviceQueueCreateInfo deviceTransferQueueCreateInfo
-		{
-			.queueFamilyIndex = transferQueueFamilyIndex,
-			.queueCount = 1,
-			.pQueuePriorities = &queuePriorityT
-		};
-
-		deviceQueues.push_back(deviceGraphicQueueCreateInfo);
-		deviceQueues.push_back(deviceTransferQueueCreateInfo);
-	}
-
-	std::vector<const char*> deviceExtensions = {
-		VK_KHR_SWAPCHAIN_EXTENSION_NAME
-	};
-
-	filterDeviceExtensions(deviceExtensions);
-
-#if (NDEBUG)
-	/* List device validation layers */
-	auto deviceLayers = physicalDevice.enumerateDeviceLayerProperties();
-	std::cout
-		<< "Supported devices layers: "
-		<< std::endl;
-	for (auto layer : deviceLayers)
-	{
-		std::cout << layer.layerName << std::endl;
-	}
-	std::cout << std::endl;
-#endif
-
-	auto deviceFeatures = physicalDevice.getFeatures();
-
-	const vk::DeviceCreateInfo deviceCreateInfo{
-		.queueCreateInfoCount = static_cast<uint32_t>(deviceQueues.size()),
-		.pQueueCreateInfos = deviceQueues.data(),
-		.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size()),
-		.ppEnabledExtensionNames = deviceExtensions.data(),
-		.pEnabledFeatures = &deviceFeatures
-	};
-
-	device = physicalDevice.createDevice(deviceCreateInfo);
-
-	if (preferredQueueFamilySetting ==
-		PreferredQueueFamilySettings::eGraphicsTransferTogether)
-	{
-		graphicsQueue = device.getQueue(graphicsQueueFamilyIndex, 0);
-		presentQueue = device.getQueue(graphicsQueueFamilyIndex, 1);
-		transferQueue = device.getQueue(graphicsQueueFamilyIndex, 2);
-	}
-	else
-	{
-		graphicsQueue = device.getQueue(graphicsQueueFamilyIndex, 0);
-		presentQueue = device.getQueue(graphicsQueueFamilyIndex, 1);
-		transferQueue = device.getQueue(graphicsQueueFamilyIndex, 0);
-	}
-
-	std::cout << "Logical device created!" << std::endl;
+	device.createDevice(&physicalDevice, instance, preferredQueueFamilySetting,
+	                    graphicsQueueFamilyIndex, transferQueueFamilyIndex);
 }
 
-void AppBase::createAllocator()
+void AppBase::createQueues()
 {
-	allocator = alloc::init(physicalDevice, device, instance);
+	if (preferredQueueFamilySetting ==
+		PreferredQueueFamilySettings::eGraphicsTransferTogether)
+	{
+		graphicsQueue = vk::Device(device).
+			getQueue(graphicsQueueFamilyIndex, 0);
+		presentQueue = vk::Device(device).getQueue(graphicsQueueFamilyIndex, 1);
+		transferQueue = vk::Device(device).
+			getQueue(graphicsQueueFamilyIndex, 2);
+	}
+	else
+	{
+		graphicsQueue = vk::Device(device).
+			getQueue(graphicsQueueFamilyIndex, 0);
+		presentQueue = vk::Device(device).getQueue(graphicsQueueFamilyIndex, 1);
+		transferQueue = vk::Device(device).
+			getQueue(graphicsQueueFamilyIndex, 0);
+	}
 }
 
 void AppBase::waitIdle() const
@@ -455,9 +320,7 @@ void AppBase::drawFrame()
 	try
 	{
 		result = device.acquireNextImageKHR(swapchain.getSwapchain(),
-		                                    UINT64_MAX,
 		                                    imageAvailableSemaphore,
-		                                    nullptr,
 		                                    &imageIndex);
 	}
 	catch (vk::OutOfDateKHRError error)
@@ -534,7 +397,7 @@ void AppBase::updateSwapchain()
 {
 	device.waitIdle();
 
-	swapchain.release(device, allocator);
+	swapchain.release(device);
 	renderPass.release(device);
 
 	createSwapchain();
@@ -542,14 +405,11 @@ void AppBase::updateSwapchain()
 	createSwapchainFrames();
 
 	needResize = false;
-
-	std::cout << "Swapchain updated!" << std::endl;
 }
 
 void AppBase::createSwapchain()
 {
-	swapchain.create(physicalDevice, device, allocator, commandPool,
-	                 transferQueue, surface);
+	swapchain.create(physicalDevice, device, transferQueue, surface);
 }
 
 void AppBase::createRenderPass()
@@ -563,23 +423,14 @@ void AppBase::createRenderPass()
 void AppBase::createSwapchainFrames()
 {
 	swapchain.createSwapchainFrames(device, renderPass.getRenderPass());
-	swapchain.createCommandBuffers(device, commandPool);
-}
-
-void AppBase::createCommandPool()
-{
-	const vk::CommandPoolCreateInfo commandPoolCreateInfo = {
-		.queueFamilyIndex = graphicsQueueFamilyIndex
-	};
-
-	commandPool = device.createCommandPool(commandPoolCreateInfo);
+	swapchain.createCommandBuffers(device);
 }
 
 void AppBase::setupScene()
 {
 	const auto size = static_cast<uint32_t>(swapchain.getSwapchainSwainSize());
 	const auto extent = swapchain.getSwapchainExtent();
-	scene.setup(device, allocator, size, extent);
+	scene.setup(device, size, extent);
 }
 
 void AppBase::buildCommandBuffers()
@@ -690,8 +541,10 @@ void AppBase::buildCommandBuffers()
 void AppBase::createSemaphores()
 {
 	const vk::SemaphoreCreateInfo semaphoreCreateInfo;
-	imageAvailableSemaphore = device.createSemaphore(semaphoreCreateInfo);
-	renderFinishedSemaphore = device.createSemaphore(semaphoreCreateInfo);
+	imageAvailableSemaphore = vk::Device(device).createSemaphore(
+		semaphoreCreateInfo);
+	renderFinishedSemaphore = vk::Device(device).createSemaphore(
+		semaphoreCreateInfo);
 }
 
 void AppBase::update() const
@@ -700,7 +553,7 @@ void AppBase::update() const
 	const auto time = std::chrono::duration<float, std::chrono::seconds::period>
 		(currentTime - startTime).count();
 
-	scene.update(allocator, time, swapchain.getSwapchainExtent());
+	scene.update(device, time, swapchain.getSwapchainExtent());
 }
 
 void AppBase::framebufferResizeCallback(GLFWwindow* window, int width,

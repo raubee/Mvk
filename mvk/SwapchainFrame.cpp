@@ -3,7 +3,7 @@
 
 using namespace mvk;
 
-void SwapchainFrame::create(const vk::Device device,
+void SwapchainFrame::create(const Device device,
                             const vk::Image image,
                             const vk::RenderPass renderPass,
                             const vk::Format swapchainFormat,
@@ -14,16 +14,16 @@ void SwapchainFrame::create(const vk::Device device,
 	createFramebuffer(device, depthImage, renderPass, swapchainExtent);
 }
 
-void SwapchainFrame::release(const vk::Device device) const
+void SwapchainFrame::release(const Device device) const
 {
 	if (framebuffer)
-		device.destroy(framebuffer);
+		vk::Device(device).destroy(framebuffer);
 
 	if (imageView)
-		device.destroy(imageView);
+		vk::Device(device).destroy(imageView);
 }
 
-void SwapchainFrame::createImageView(const vk::Device device,
+void SwapchainFrame::createImageView(const Device device,
                                      vk::Image image,
                                      vk::Format format)
 {
@@ -46,10 +46,10 @@ void SwapchainFrame::createImageView(const vk::Device device,
 		}
 	};
 
-	imageView = device.createImageView(imageViewCreateInfo);
+	imageView = vk::Device(device).createImageView(imageViewCreateInfo);
 }
 
-void SwapchainFrame::createFramebuffer(const vk::Device device,
+void SwapchainFrame::createFramebuffer(const Device device,
                                        const vk::ImageView depthImageView,
                                        const vk::RenderPass renderPass,
                                        const vk::Extent2D extent)
@@ -65,5 +65,5 @@ void SwapchainFrame::createFramebuffer(const vk::Device device,
 		.layers = 1
 	};
 
-	framebuffer = device.createFramebuffer(framebufferCreateInfo);
+	framebuffer = vk::Device(device).createFramebuffer(framebufferCreateInfo);
 }

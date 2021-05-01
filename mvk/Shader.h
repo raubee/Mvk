@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Vulkan.h"
+#include "Device.hpp"
 
 namespace mvk
 {
@@ -12,10 +12,10 @@ namespace mvk
 		vk::PipelineShaderStageCreateInfo pipelineShaderStageCreateInfo;
 
 	public:
-		Shader(vk::Device device, const std::string& filename,
+		Shader(Device device, const std::string& filename,
 		       vk::ShaderStageFlagBits stageFlagBits);
 
-		void release(vk::Device device) const;
+		void release(Device device) const;
 
 		vk::PipelineShaderStageCreateInfo getPipelineShaderCreateInfo() const
 		{

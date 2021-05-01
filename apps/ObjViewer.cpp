@@ -4,25 +4,25 @@
 
 class ObjViewer : public mvk::AppBase
 {
-	struct
+	struct Textures
 	{
 		mvk::Texture2D albedo;
 	}
 	textures;
 
-	struct
+	struct Materials
 	{
 		mvk::BaseMaterial standard;
 	}
 	materials;
 
-	struct
+	struct Models
 	{
-		mvk::Mesh ganesh;
+		mvk::Model ganesh;
 	}
 	models;
 
-	struct
+	struct GraphicPipelines
 	{
 		mvk::GraphicPipeline standard;
 	}
@@ -33,15 +33,15 @@ public:
 		.appName = "ObjViewer"
 	})
 	{
-		const auto modelPath = "assets/models/ganesha.obj";
+		const auto modelPath = "assets/models/ganesha/ganesha.obj";
+		//const auto modelPath = "assets/models/adamHead/adamHead.gltf";
 
-		models.ganesh.loadFromFile(allocator, device, commandPool,
-		                           transferQueue, modelPath);
+		models.ganesh.loadFromFile(device, transferQueue, modelPath);
 
-		const auto albedoPath = "assets/models/textures/Ganesha_BaseColor.jpg";
+		const auto albedoPath =
+			"assets/models/ganesha/textures/Ganesha_BaseColor.jpg";
 
-		textures.albedo.loadFromFile(allocator, device, commandPool,
-		                             transferQueue, albedoPath,
+		textures.albedo.loadFromFile(device, transferQueue, albedoPath,
 		                             vk::Format::eR8G8B8A8Srgb);
 
 		mvk::BaseMaterialDescription description;
@@ -73,8 +73,8 @@ public:
 
 	~ObjViewer()
 	{
-		textures.albedo.release(device, allocator);
-		models.ganesh.release(allocator);
+		textures.albedo.release(device);
+		models.ganesh.release(device);
 		materials.standard.release(device);
 		pipelines.standard.release(device);
 	}

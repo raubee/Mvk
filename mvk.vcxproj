@@ -152,10 +152,10 @@
   <ItemGroup>
     <ClInclude Include="mvk\AppBase.h" />
     <ClInclude Include="mvk\BaseMaterial.h" />
-    <ClInclude Include="mvk\Geometry.h" />
+    <ClInclude Include="mvk\Device.hpp" />
     <ClInclude Include="mvk\GraphicPipeline.h" />
     <ClInclude Include="mvk\Material.h" />
-    <ClInclude Include="mvk\Mesh.h" />
+    <ClInclude Include="mvk\Model.h" />
     <ClInclude Include="mvk\NormalMaterial.h" />
     <ClInclude Include="mvk\RenderPass.h" />
     <ClInclude Include="mvk\Scene.h" />
@@ -172,10 +172,9 @@
   <ItemGroup>
     <ClCompile Include="mvk\AppBase.cpp" />
     <ClCompile Include="mvk\BaseMaterial.cpp" />
-    <ClCompile Include="mvk\Geometry.cpp" />
     <ClCompile Include="mvk\GraphicPipeline.cpp" />
     <ClCompile Include="mvk\Material.cpp" />
-    <ClCompile Include="mvk\Mesh.cpp" />
+    <ClCompile Include="mvk\Model.cpp" />
     <ClCompile Include="mvk\NormalMaterial.cpp" />
     <ClCompile Include="mvk\RenderPass.cpp" />
     <ClCompile Include="mvk\Scene.cpp" />

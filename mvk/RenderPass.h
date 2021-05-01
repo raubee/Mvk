@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Vulkan.h"
+#include "Device.hpp"
 
 namespace mvk
 {
@@ -10,10 +10,10 @@ namespace mvk
 
 	public:
 		
-		void create(vk::Device device, vk::Format colorFormat,
+		void create(Device device, vk::Format colorFormat,
 		          vk::Format depthFormat);
 
-		void release(vk::Device device) const;
+		void release(Device device);
 
 		vk::RenderPass getRenderPass() const { return renderPass; }
 	};

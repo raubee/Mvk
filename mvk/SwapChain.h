@@ -24,10 +24,7 @@ namespace mvk
 		vk::Format frameFormat = vk::Format::eUndefined;
 		vk::Format depthFormat = vk::Format::eUndefined;
 
-		void createDepthImageView(vk::Device device,
-		                          vma::Allocator allocator,
-		                          vk::CommandPool commandPool,
-		                          vk::Queue transferQueue);
+		void createDepthImageView(Device device, vk::Queue transferQueue);
 
 		SurfaceCapabilitiesKHRBatch getSwapchainCapabilities(
 			vk::PhysicalDevice physicalDevice,
@@ -42,23 +39,19 @@ namespace mvk
 
 	public:
 		void create(vk::PhysicalDevice physicalDevice,
-		            vk::Device device,
-		            vma::Allocator allocator,
-		            vk::CommandPool commandPool,
+		            Device device,
 		            vk::Queue transferQueue,
 		            vk::SurfaceKHR surface);
 
 		void createSwapChainKHR(vk::PhysicalDevice physicalDevice,
-		                        vk::Device device,
+		                        Device device,
 		                        vk::SurfaceKHR surface);
 
-		void createCommandBuffers(vk::Device device,
-		                          vk::CommandPool commandPool);
+		void createCommandBuffers(Device device);
 
-		void createSwapchainFrames(vk::Device device,
-		                           vk::RenderPass renderPass);
+		void createSwapchainFrames(Device device, vk::RenderPass renderPass);
 
-		void release(vk::Device device, vma::Allocator allocator);
+		void release(Device device);
 
 		vk::SwapchainKHR getSwapchain() const { return swapchain; }
 

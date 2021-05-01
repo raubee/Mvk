@@ -1,6 +1,6 @@
 #pragma once
 
-#include "VulkanVma.h"
+#include "Device.hpp"
 
 namespace mvk
 {
@@ -13,18 +13,16 @@ namespace mvk
 		vk::ImageView imageView;
 		vk::Sampler sampler;
 
-		void createImageView(vk::Device device);
-		void createSampler(vk::Device device);
+		void createImageView(Device device);
+		void createSampler(Device device);
 
 	public:
-		void loadFromFile(vma::Allocator allocator,
-		                  vk::Device device,
-		                  vk::CommandPool commandPool,
+		void loadFromFile(Device device,
 		                  vk::Queue transferQueue,
 		                  const char* path,
 		                  vk::Format format);
 
-		void release(vk::Device device, vma::Allocator allocator) const;
+		void release(Device device) const;
 
 		vk::Sampler getSampler() const { return sampler; }
 		vk::ImageView getImageView() const { return imageView; }

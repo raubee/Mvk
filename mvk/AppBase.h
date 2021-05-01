@@ -28,26 +28,26 @@ namespace mvk
 	{
 	protected:
 
-		vk::Device device;
-		vma::Allocator allocator;
-		vk::CommandPool commandPool;
+		Device device;
+		SwapChain swapchain;
+		RenderPass renderPass;
+		Scene scene;
+
 		vk::Queue graphicsQueue;
 		vk::Queue transferQueue;
 		vk::Queue presentQueue;
 
-		SwapChain swapchain;
-		RenderPass renderPass;
+		PreferredQueueFamilySettings preferredQueueFamilySetting;
 
-		Scene scene;
-
+		uint32_t graphicsQueueFamilyIndex;
+		uint32_t transferQueueFamilyIndex;
+		
 	private:
 		const char* appName;
 		int width;
 		int height;
 
 		vk::ApplicationInfo applicationInfo;
-
-		PreferredQueueFamilySettings preferredQueueFamilySetting;
 
 		GLFWwindow* window;
 		std::vector<const char*> glfwExtensions;
@@ -56,9 +56,6 @@ namespace mvk
 
 		vk::Instance instance;
 		vk::PhysicalDevice physicalDevice;
-
-		uint32_t graphicsQueueFamilyIndex;
-		uint32_t transferQueueFamilyIndex;
 
 		vk::Semaphore imageAvailableSemaphore;
 		vk::Semaphore renderFinishedSemaphore;
@@ -72,18 +69,17 @@ namespace mvk
 		                                      int height);
 
 		void filterAvailableLayers(std::vector<const char*>& layers);
-		void filterDeviceExtensions(std::vector<const char*>& extensions) const;
+
 		void createInstance();
 		void createSurfaceKHR();
 		void pickPhysicalDevice();
 		void createDevice();
-		void createAllocator();
+		void createQueues();
 		void createSwapchain();
 		void createSwapchainFrames();
 		void updateSwapchain();
 		void createRenderPass();
 		void createSemaphores();
-		void createCommandPool();
 		void setupScene();
 
 		virtual void buildCommandBuffers();

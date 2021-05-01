@@ -3,34 +3,31 @@
 
 using namespace mvk;
 
-void Scene::setup(const vk::Device device,
-                  const vma::Allocator allocator,
-                  const uint32_t size,
+void Scene::setup(const Device device, const uint32_t size,
                   const vk::Extent2D extent)
 {
-	createUniformBufferObject(allocator);
-	updateUniformBufferObject(allocator, 0.0f, extent);
+	createUniformBufferObject(device);
+	updateUniformBufferObject(device, 0.0f, extent);
 	createDescriptorSetLayout(device);
 	createDescriptorPool(device, size);
 	createDescriptorSets(device, size);
 	updateDescriptorSets(device);
 }
 
-void Scene::update(const vma::Allocator allocator, const float time,
+void Scene::update(const Device device, const float time,
                    const vk::Extent2D extent) const
 {
-	updateUniformBufferObject(allocator, time, extent);
+	updateUniformBufferObject(device, time, extent);
 }
 
-void Scene::release(const vk::Device device,
-                    const vma::Allocator allocator) const
+void Scene::release(const Device device) const
 {
-	device.destroyDescriptorPool(descriptorPool);
-	device.destroyDescriptorSetLayout(descriptorSetLayout);
-	alloc::deallocateBuffer(allocator, uniformBuffer);
+	device.device.destroyDescriptorPool(descriptorPool);
+	device.device.destroyDescriptorSetLayout(descriptorSetLayout);
+	device.destroyBuffer(uniformBuffer);
 }
 
-void Scene::createDescriptorSetLayout(const vk::Device device)
+void Scene::createDescriptorSetLayout(const Device device)
 {
 	const vk::DescriptorSetLayoutBinding uniformBufferLayoutBinding = {
 		.binding = 0,
@@ -47,11 +44,11 @@ void Scene::createDescriptorSetLayout(const vk::Device device)
 		.pBindings = layoutBindings.data()
 	};
 
-	descriptorSetLayout = device.createDescriptorSetLayout(
+	descriptorSetLayout = vk::Device(device).createDescriptorSetLayout(
 		descriptorSetLayoutCreateInfo);
 }
 
-void Scene::createUniformBufferObject(const vma::Allocator allocator)
+void Scene::createUniformBufferObject(const Device device)
 {
 	const auto size = sizeof(UniformBufferObject);
 
@@ -60,10 +57,11 @@ void Scene::createUniformBufferObject(const vma::Allocator allocator)
 		.usage = vk::BufferUsageFlagBits::eUniformBuffer,
 	};
 
-	uniformBuffer = alloc::allocateCpuToGpuBuffer(allocator, bufferCreateInfo);
+	uniformBuffer =
+		alloc::allocateCpuToGpuBuffer(vma::Allocator(device), bufferCreateInfo);
 }
 
-void Scene::createDescriptorPool(const vk::Device device, const uint32_t size)
+void Scene::createDescriptorPool(const Device device, const uint32_t size)
 {
 	std::array<vk::DescriptorPoolSize, 1> descriptorPoolSizes{};
 	descriptorPoolSizes[0].type = vk::DescriptorType::eUniformBuffer;
@@ -76,10 +74,11 @@ void Scene::createDescriptorPool(const vk::Device device, const uint32_t size)
 		.pPoolSizes = descriptorPoolSizes.data()
 	};
 
-	descriptorPool = device.createDescriptorPool(descriptorPoolCreateInfo);
+	descriptorPool = vk::Device(device)
+		.createDescriptorPool(descriptorPoolCreateInfo);
 }
 
-void Scene::createDescriptorSets(const vk::Device device, const uint32_t size)
+void Scene::createDescriptorSets(const Device device, const uint32_t size)
 {
 	std::vector<vk::DescriptorSetLayout> descriptorSetLayouts
 		(size, descriptorSetLayout);
@@ -90,10 +89,11 @@ void Scene::createDescriptorSets(const vk::Device device, const uint32_t size)
 		.pSetLayouts = descriptorSetLayouts.data()
 	};
 
-	descriptorSets = device.allocateDescriptorSets(descriptorSetAllocateInfo);
+	descriptorSets =
+		vk::Device(device).allocateDescriptorSets(descriptorSetAllocateInfo);
 }
 
-void Scene::updateDescriptorSets(const vk::Device device)
+void Scene::updateDescriptorSets(const Device device)
 {
 	for (auto descriptorSet : descriptorSets)
 	{
@@ -114,12 +114,12 @@ void Scene::updateDescriptorSets(const vk::Device device)
 			.pBufferInfo = &descriptorBufferInfo,
 		};
 
-		device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+		vk::Device(device)
+			.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 	}
 }
 
-void Scene::updateUniformBufferObject(const vma::Allocator allocator,
-                                      const float time,
+void Scene::updateUniformBufferObject(const Device device, const float time,
                                       const vk::Extent2D extent) const
 {
 	UniformBufferObject ubo{};
@@ -133,5 +133,5 @@ void Scene::updateUniformBufferObject(const vma::Allocator allocator,
 	                            0.1f, 10.0f);
 	ubo.proj[1][1] *= -1;
 
-	mapDataToBuffer(allocator, uniformBuffer, &ubo, sizeof ubo);
+	mapDataToBuffer(vma::Allocator(device), uniformBuffer, &ubo, sizeof ubo);
 }

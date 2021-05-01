@@ -2,14 +2,13 @@
 
 using namespace mvk;
 
-void BaseMaterial::load(const vk::Device device,
+void BaseMaterial::load(const Device device,
                         const BaseMaterialDescription description)
 
 {
 	albedo = description.albedo;
 
-	Material::load(device,
-	               new Shader(device, "shaders/vert.spv",
+	Material::load(new Shader(device, "shaders/vert.spv",
 	                          vk::ShaderStageFlagBits::eVertex),
 	               new Shader(device, "shaders/frag.spv",
 	                          vk::ShaderStageFlagBits::eFragment));
@@ -20,7 +19,7 @@ void BaseMaterial::load(const vk::Device device,
 	updateDescriptorSets(device);
 }
 
-void BaseMaterial::createDescriptorPool(const vk::Device device)
+void BaseMaterial::createDescriptorPool(const Device device)
 {
 	vk::DescriptorPoolSize descriptorPoolSize{
 		.type = vk::DescriptorType::eCombinedImageSampler,
@@ -33,10 +32,11 @@ void BaseMaterial::createDescriptorPool(const vk::Device device)
 		.pPoolSizes = &descriptorPoolSize
 	};
 
-	descriptorPool = device.createDescriptorPool(descriptorPoolCreateInfo);
+	descriptorPool =
+		vk::Device(device).createDescriptorPool(descriptorPoolCreateInfo);
 }
 
-void BaseMaterial::updateDescriptorSets(const vk::Device device)
+void BaseMaterial::updateDescriptorSets(const Device device)
 {
 	for (auto descriptorSet : descriptorSets)
 	{
@@ -55,11 +55,12 @@ void BaseMaterial::updateDescriptorSets(const vk::Device device)
 			.pImageInfo = &albedoDescriptorImageInfo
 		};
 
-		device.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+		vk::Device(device)
+			.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 	}
 }
 
-void BaseMaterial::createDescriptorSetLayout(const vk::Device device)
+void BaseMaterial::createDescriptorSetLayout(const Device device)
 {
 	const vk::DescriptorSetLayoutBinding albedoLayoutBinding = {
 		.binding = 0,
@@ -76,11 +77,11 @@ void BaseMaterial::createDescriptorSetLayout(const vk::Device device)
 		.pBindings = layoutBindings.data()
 	};
 
-	descriptorSetLayout = device.createDescriptorSetLayout(
-		descriptorSetLayoutCreateInfo);
+	descriptorSetLayout = vk::Device(device)
+		.createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
 }
 
-void BaseMaterial::createDescriptorSets(const vk::Device device)
+void BaseMaterial::createDescriptorSets(const Device device)
 {
 	std::vector<vk::DescriptorSetLayout> descriptorSetLayouts
 		(1, descriptorSetLayout);
@@ -91,5 +92,6 @@ void BaseMaterial::createDescriptorSets(const vk::Device device)
 		.pSetLayouts = descriptorSetLayouts.data()
 	};
 
-	descriptorSets = device.allocateDescriptorSets(descriptorSetAllocateInfo);
+	descriptorSets =
+		vk::Device(device).allocateDescriptorSets(descriptorSetAllocateInfo);
 }
