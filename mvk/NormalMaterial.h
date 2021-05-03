@@ -5,7 +5,6 @@
 
 namespace mvk
 {
-
 	class NormalMaterial : public Material
 	{
 	public:

@@ -27,27 +27,6 @@ void Scene::release(const Device device) const
 	device.destroyBuffer(uniformBuffer);
 }
 
-void Scene::createDescriptorSetLayout(const Device device)
-{
-	const vk::DescriptorSetLayoutBinding uniformBufferLayoutBinding = {
-		.binding = 0,
-		.descriptorType = vk::DescriptorType::eUniformBuffer,
-		.descriptorCount = 1,
-		.stageFlags = vk::ShaderStageFlagBits::eVertex
-	};
-
-	std::array<vk::DescriptorSetLayoutBinding, 1> layoutBindings
-		= {uniformBufferLayoutBinding};
-
-	const vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
-		.bindingCount = static_cast<uint32_t>(layoutBindings.size()),
-		.pBindings = layoutBindings.data()
-	};
-
-	descriptorSetLayout = vk::Device(device).createDescriptorSetLayout(
-		descriptorSetLayoutCreateInfo);
-}
-
 void Scene::createUniformBufferObject(const Device device)
 {
 	const auto size = sizeof(UniformBufferObject);
@@ -125,13 +104,14 @@ void Scene::updateUniformBufferObject(const Device device, const float time,
 	UniformBufferObject ubo{};
 	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),
 	                        glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 1.0f),
+	ubo.view = glm::lookAt(glm::vec3(10.0f, 10.0f, 1.0f),
 	                       glm::vec3(0.0f, 0.0f, 0.75f),
 	                       glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.proj = glm::perspective(glm::radians(45.0f), extent.width /
 	                            static_cast<float>(extent.height),
-	                            0.1f, 10.0f);
+	                            0.1f, 100.0f);
 	ubo.proj[1][1] *= -1;
 
 	mapDataToBuffer(vma::Allocator(device), uniformBuffer, &ubo, sizeof ubo);
 }
+

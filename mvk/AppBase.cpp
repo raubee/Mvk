@@ -44,17 +44,20 @@ AppBase::~AppBase()
 
 void AppBase::setupWindow(const bool fullscreen)
 {
-	if (fullscreen)
-	{
-		// TODO : Screen size
-		width = 600;
-		height = 600;
-	}
-
 	glfwInit();
 
+	GLFWmonitor* monitor = nullptr;
+
+	if (fullscreen)
+	{
+		monitor = glfwGetPrimaryMonitor();
+		const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+		width = mode->width;
+		height = mode->height;
+	}
+
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	window = glfwCreateWindow(width, height, appName, nullptr, nullptr);
+	window = glfwCreateWindow(width, height, appName, monitor, nullptr);
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
 	uint32_t count = 0;
@@ -442,99 +445,7 @@ void AppBase::buildCommandBuffers()
 		const auto commandBuffer = frame.getCommandBuffer();
 		const auto framebuffer = frame.getFramebuffer();
 
-		const auto extent = swapchain.getSwapchainExtent();
-
-		const vk::CommandBufferBeginInfo commandBufferBeginInfo{};
-		commandBuffer.begin(commandBufferBeginInfo);
-
-		const std::array<float, 4> clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-		std::array<vk::ClearValue, 2> clearValues{};
-		clearValues[0].setColor(clearColor);
-		clearValues[1].setDepthStencil({1.0f, 0});
-
-		const vk::RenderPassBeginInfo renderPassBeginInfo = {
-			.renderPass = renderPass.getRenderPass(),
-			.framebuffer = framebuffer,
-			.renderArea = {
-				.offset = {0, 0},
-				.extent = extent
-			},
-			.clearValueCount = static_cast<uint32_t>(clearValues.size()),
-			.pClearValues = clearValues.data()
-		};
-
-		commandBuffer.beginRenderPass(renderPassBeginInfo,
-		                              vk::SubpassContents::eInline);
-
-		const auto objects = scene.getObjects();
-
-		for (auto object : objects)
-		{
-			const auto material = object->material;
-			const auto graphicPipeline = object->graphicPipeline;
-			const auto pipelineLayout = graphicPipeline->getPipelineLayout();
-			const auto pipeline = graphicPipeline->getPipeline();
-
-			std::vector<vk::DescriptorSet> descriptorSets = {
-				scene.getDescriptorSet(0)
-			};
-
-			const auto matDescriptorSet = material->getDescriptorSet(0);
-
-			if (matDescriptorSet)
-			{
-				descriptorSets.push_back(matDescriptorSet);
-			}
-
-			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-			                           pipeline);
-
-			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-			                                 pipelineLayout, 0,
-			                                 static_cast<uint32_t>(
-				                                 descriptorSets.size()),
-			                                 descriptorSets.data(), 0, nullptr);
-
-			vk::Viewport viewport = {
-				.x = 0.0f,
-				.y = 0.0f,
-				.width = static_cast<float>(extent.width),
-				.height = static_cast<float>(extent.height),
-				.minDepth = 0.0f,
-				.maxDepth = 1.0f
-			};
-
-			commandBuffer.setViewport(0, viewport);
-
-			vk::Rect2D scissor = {
-				.offset = {0, 0},
-				.extent = extent
-			};
-
-			commandBuffer.setScissor(0, scissor);
-
-			const auto vertexBuffer = object->vertexBuffer;
-			const auto indexBuffer = object->indexBuffer;
-
-			vk::DeviceSize offsets[] = {0};
-
-			commandBuffer.bindVertexBuffers(0, 1,
-			                                &vertexBuffer.buffer,
-			                                offsets);
-
-			if (indexBuffer.buffer)
-			{
-				const auto size = object->indicesCount;
-
-				commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
-				                              vk::IndexType::eUint16);
-
-				commandBuffer.drawIndexed(size, 1, 0, 0, 0);
-			}
-		}
-
-		commandBuffer.endRenderPass();
-		commandBuffer.end();
+		buildCommandBuffer(commandBuffer, framebuffer);
 	}
 }
 

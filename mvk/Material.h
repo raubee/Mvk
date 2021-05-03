@@ -15,13 +15,7 @@ namespace mvk
 		Shader* fragShader;
 		Shader* geoShader;
 		Shader* tesShader;
-
-		vk::Extent2D extent;
-		vk::CommandPool commandPool;
-		vk::DescriptorPool descriptorPool;
-		vk::DescriptorSetLayout descriptorSetLayout;
-		std::vector<vk::DescriptorSet> descriptorSets;
-
+	
 	public:
 		virtual void load(Shader* vertShader,
 		                  Shader* fragShader,
@@ -32,17 +26,5 @@ namespace mvk
 
 		std::vector<vk::PipelineShaderStageCreateInfo>
 		getPipelineShaderStageCreateInfo() const;
-
-		vk::DescriptorSetLayout getDescriptorSetLayout() const
-		{
-			return descriptorSetLayout;
-		}
-
-		vk::DescriptorSet getDescriptorSet(const int index) const
-		{
-			if (descriptorSets.size() <= index) return nullptr;
-
-			return descriptorSets[index];
-		}
 	};
 }

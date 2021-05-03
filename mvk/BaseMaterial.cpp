@@ -19,6 +19,14 @@ void BaseMaterial::load(const Device device,
 	updateDescriptorSets(device);
 }
 
+void BaseMaterial::release(const Device device)
+{
+	vk::Device(device).destroyDescriptorPool(descriptorPool);
+	vk::Device(device).destroyDescriptorSetLayout(descriptorSetLayout);
+
+	Material::release(device);
+}
+
 void BaseMaterial::createDescriptorPool(const Device device)
 {
 	vk::DescriptorPoolSize descriptorPoolSize{
@@ -34,6 +42,21 @@ void BaseMaterial::createDescriptorPool(const Device device)
 
 	descriptorPool =
 		vk::Device(device).createDescriptorPool(descriptorPoolCreateInfo);
+}
+
+void BaseMaterial::createDescriptorSets(const Device device)
+{
+	std::vector<vk::DescriptorSetLayout> descriptorSetLayouts
+	(1, descriptorSetLayout);
+
+	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+		.descriptorPool = descriptorPool,
+		.descriptorSetCount = 1,
+		.pSetLayouts = descriptorSetLayouts.data()
+	};
+
+	descriptorSets =
+		vk::Device(device).allocateDescriptorSets(descriptorSetAllocateInfo);
 }
 
 void BaseMaterial::updateDescriptorSets(const Device device)
@@ -58,40 +81,4 @@ void BaseMaterial::updateDescriptorSets(const Device device)
 		vk::Device(device)
 			.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 	}
-}
-
-void BaseMaterial::createDescriptorSetLayout(const Device device)
-{
-	const vk::DescriptorSetLayoutBinding albedoLayoutBinding = {
-		.binding = 0,
-		.descriptorType = vk::DescriptorType::eCombinedImageSampler,
-		.descriptorCount = 1,
-		.stageFlags = vk::ShaderStageFlagBits::eFragment
-	};
-
-	std::array<vk::DescriptorSetLayoutBinding, 1> layoutBindings
-		= {albedoLayoutBinding};
-
-	const vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
-		.bindingCount = static_cast<uint32_t>(layoutBindings.size()),
-		.pBindings = layoutBindings.data()
-	};
-
-	descriptorSetLayout = vk::Device(device)
-		.createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
-}
-
-void BaseMaterial::createDescriptorSets(const Device device)
-{
-	std::vector<vk::DescriptorSetLayout> descriptorSetLayouts
-		(1, descriptorSetLayout);
-
-	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo = {
-		.descriptorPool = descriptorPool,
-		.descriptorSetCount = 1,
-		.pSetLayouts = descriptorSetLayouts.data()
-	};
-
-	descriptorSets =
-		vk::Device(device).allocateDescriptorSets(descriptorSetAllocateInfo);
 }

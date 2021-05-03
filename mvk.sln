@@ -20,6 +20,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MultiViewer", "MultiViewer.
 		{31B0C1CA-387A-4629-A9F2-541C28E099B3} = {31B0C1CA-387A-4629-A9F2-541C28E099B3}
 	EndProjectSection
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GltfViewer", "GltfViewer.vcxproj", "{8305A916-0468-4395-A069-2F2C1A02BBC0}"
+	ProjectSection(ProjectDependencies) = postProject
+		{31B0C1CA-387A-4629-A9F2-541C28E099B3} = {31B0C1CA-387A-4629-A9F2-541C28E099B3}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -60,6 +65,14 @@ Global
 		{2C960782-26DF-43B2-BE4D-B275D3925EE8}.Release|x64.Build.0 = Release|x64
 		{2C960782-26DF-43B2-BE4D-B275D3925EE8}.Release|x86.ActiveCfg = Release|Win32
 		{2C960782-26DF-43B2-BE4D-B275D3925EE8}.Release|x86.Build.0 = Release|Win32
+		{8305A916-0468-4395-A069-2F2C1A02BBC0}.Debug|x64.ActiveCfg = Debug|x64
+		{8305A916-0468-4395-A069-2F2C1A02BBC0}.Debug|x64.Build.0 = Debug|x64
+		{8305A916-0468-4395-A069-2F2C1A02BBC0}.Debug|x86.ActiveCfg = Debug|Win32
+		{8305A916-0468-4395-A069-2F2C1A02BBC0}.Debug|x86.Build.0 = Debug|Win32
+		{8305A916-0468-4395-A069-2F2C1A02BBC0}.Release|x64.ActiveCfg = Release|x64
+		{8305A916-0468-4395-A069-2F2C1A02BBC0}.Release|x64.Build.0 = Release|x64
+		{8305A916-0468-4395-A069-2F2C1A02BBC0}.Release|x86.ActiveCfg = Release|Win32
+		{8305A916-0468-4395-A069-2F2C1A02BBC0}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

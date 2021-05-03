@@ -83,6 +83,8 @@ namespace mvk
 		void setupScene();
 
 		virtual void buildCommandBuffers();
+		virtual void buildCommandBuffer(vk::CommandBuffer commandBuffer,
+			vk::Framebuffer frameBuffer) = 0;
 
 		void waitIdle() const;
 		void drawFrame();

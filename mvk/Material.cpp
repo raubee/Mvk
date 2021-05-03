@@ -26,9 +26,6 @@ void Material::release(const Device device)
 
 	if (tesShader != nullptr)
 		tesShader->release(device);
-
-	vk::Device(device).destroyDescriptorPool(descriptorPool);
-	vk::Device(device).destroyDescriptorSetLayout(descriptorSetLayout);
 }
 
 std::vector<vk::PipelineShaderStageCreateInfo> Material::

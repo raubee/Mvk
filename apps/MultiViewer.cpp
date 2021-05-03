@@ -49,9 +49,10 @@ class MultiViewer : public mvk::AppBase
 
 		materials.standard.load(device, description);
 
-		std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts = {
-			scene.getDescriptorSetLayout(),
-			materials.standard.getDescriptorSetLayout()
+		std::array<vk::DescriptorSetLayout, 3> descriptorSetLayouts = {
+			mvk::Scene::getDescriptorSetLayout(device),
+			mvk::Model::getDescriptorSetLayout(device),
+			mvk::BaseMaterial::getDescriptorSetLayout(device)
 		};
 
 		pipelines.standard.build(device,
@@ -63,12 +64,6 @@ class MultiViewer : public mvk::AppBase
 		                         static_cast<int32_t>(
 			                         descriptorSetLayouts.
 			                         size()));
-
-
-		models.ganesh.setMaterial(&materials.standard);
-		models.ganesh.setGraphicPipeline(&pipelines.standard);
-
-		scene.addObject(&models.ganesh);
 	}
 
 	void loadPlane()
@@ -116,7 +111,7 @@ class MultiViewer : public mvk::AppBase
 		materials.normal.load(device);
 
 		std::array<vk::DescriptorSetLayout, 1> descriptorSetLayouts = {
-			scene.getDescriptorSetLayout()
+			mvk::Scene::getDescriptorSetLayout(device)
 		};
 
 		pipelines.normal.build(device,
@@ -128,11 +123,6 @@ class MultiViewer : public mvk::AppBase
 		                       static_cast<int32_t>(
 			                       descriptorSetLayouts.
 			                       size()));
-
-		models.plane.setMaterial(&materials.normal);
-		models.plane.setGraphicPipeline(&pipelines.normal);
-
-		scene.addObject(&models.plane);
 	}
 
 public:
@@ -148,11 +138,152 @@ public:
 	{
 		textures.albedo.release(device);
 		models.ganesh.release(device);
-		materials.standard.release(device);
-		pipelines.standard.release(device);
 		models.plane.release(device);
+		materials.standard.release(device);
 		materials.normal.release(device);
+		pipelines.standard.release(device);
 		pipelines.normal.release(device);
+	}
+
+	void buildCommandBuffer(const vk::CommandBuffer commandBuffer,
+		const vk::Framebuffer framebuffer) override
+	{
+		const auto extent = swapchain.getSwapchainExtent();
+
+		const vk::CommandBufferBeginInfo commandBufferBeginInfo{};
+		commandBuffer.begin(commandBufferBeginInfo);
+
+		const std::array<float, 4> clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		std::array<vk::ClearValue, 2> clearValues{};
+		clearValues[0].setColor(clearColor);
+		clearValues[1].setDepthStencil({ 1.0f, 0 });
+
+		const vk::RenderPassBeginInfo renderPassBeginInfo = {
+			.renderPass = renderPass.getRenderPass(),
+			.framebuffer = framebuffer,
+			.renderArea = {
+				.offset = {0, 0},
+				.extent = extent
+			},
+			.clearValueCount = static_cast<uint32_t>(clearValues.size()),
+			.pClearValues = clearValues.data()
+		};
+
+		commandBuffer.beginRenderPass(renderPassBeginInfo,
+			vk::SubpassContents::eInline);
+
+		drawGanesh(commandBuffer);
+		drawPlane(commandBuffer);
+
+		commandBuffer.endRenderPass();
+		commandBuffer.end();
+	}
+
+	void drawGanesh(const vk::CommandBuffer commandBuffer)
+	{
+		const auto graphicPipeline = pipelines.standard;
+		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
+		const auto pipeline = graphicPipeline.getPipeline();
+		const auto extent = swapchain.getSwapchainExtent();
+
+		std::vector<vk::DescriptorSet> descriptorSets = {
+			scene.getDescriptorSet(0),
+			materials.standard.getDescriptorSet(0)
+		};
+
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+			pipeline);
+
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+			pipelineLayout, 0,
+			static_cast<uint32_t>(
+				descriptorSets.size()),
+			descriptorSets.data(), 0, nullptr);
+
+		vk::Viewport viewport = {
+			.x = 0.0f,
+			.y = 0.0f,
+			.width = static_cast<float>(extent.width),
+			.height = static_cast<float>(extent.height),
+			.minDepth = 0.0f,
+			.maxDepth = 1.0f
+		};
+
+		commandBuffer.setViewport(0, viewport);
+
+		vk::Rect2D scissor = {
+			.offset = {0, 0},
+			.extent = extent
+		};
+
+		commandBuffer.setScissor(0, scissor);
+
+		const auto vertexBuffer = models.ganesh.vertexBuffer;
+		const auto indexBuffer = models.ganesh.indexBuffer;
+
+		vk::DeviceSize offsets[] = { 0 };
+
+		commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer.buffer, offsets);
+
+		const auto size = models.ganesh.indicesCount;
+
+		commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
+			vk::IndexType::eUint16);
+
+		commandBuffer.drawIndexed(size, 1, 0, 0, 0);
+	}
+
+	void drawPlane(const vk::CommandBuffer commandBuffer)
+	{
+		const auto graphicPipeline = pipelines.normal;
+		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
+		const auto pipeline = graphicPipeline.getPipeline();
+		const auto extent = swapchain.getSwapchainExtent();
+
+		std::vector<vk::DescriptorSet> descriptorSets = {
+			scene.getDescriptorSet(0)
+		};
+
+		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+			pipeline);
+
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+			pipelineLayout, 0,
+			static_cast<uint32_t>(
+				descriptorSets.size()),
+			descriptorSets.data(), 0, nullptr);
+
+		vk::Viewport viewport = {
+			.x = 0.0f,
+			.y = 0.0f,
+			.width = static_cast<float>(extent.width),
+			.height = static_cast<float>(extent.height),
+			.minDepth = 0.0f,
+			.maxDepth = 1.0f
+		};
+
+		commandBuffer.setViewport(0, viewport);
+
+		vk::Rect2D scissor = {
+			.offset = {0, 0},
+			.extent = extent
+		};
+
+		commandBuffer.setScissor(0, scissor);
+
+		const auto vertexBuffer = models.plane.vertexBuffer;
+		const auto indexBuffer = models.plane.indexBuffer;
+
+		vk::DeviceSize offsets[] = { 0 };
+
+		commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer.buffer, offsets);
+
+		const auto size = models.plane.indicesCount;
+
+		commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
+			vk::IndexType::eUint16);
+
+		commandBuffer.drawIndexed(size, 1, 0, 0, 0);
 	}
 };
 
