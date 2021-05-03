@@ -38,7 +38,8 @@ void Model::createDescriptorPool(const Device device)
 		.pPoolSizes = &descriptorPoolSize
 	};
 
-	vk::Device(device).createDescriptorPool(descriptorPoolCreateInfo);
+	descriptorPool = 
+		vk::Device(device).createDescriptorPool(descriptorPoolCreateInfo);
 }
 
 void Model::createDescriptorSets(Device device)
@@ -344,8 +345,8 @@ void Model::loadFromObjFile(const char* filePath, std::vector<Vertex>& vertices,
 			mvk::Vertex vertex{};
 			vertex.position = {
 				attribute.vertices[3 * index.vertex_index + 0],
-				attribute.vertices[3 * index.vertex_index + 2],
 				attribute.vertices[3 * index.vertex_index + 1],
+				attribute.vertices[3 * index.vertex_index + 2],
 			};
 			vertex.texCoord = {
 				attribute.texcoords[2 * index.texcoord_index + 0],
@@ -353,8 +354,8 @@ void Model::loadFromObjFile(const char* filePath, std::vector<Vertex>& vertices,
 			};
 			vertex.normal = {
 				attribute.normals[3 * index.normal_index + 0],
-				attribute.normals[3 * index.normal_index + 2],
 				attribute.normals[3 * index.normal_index + 1],
+				attribute.normals[3 * index.normal_index + 2],
 			};
 			vertex.color = {1.0f, 1.0f, 1.0f};
 			vertices.push_back(vertex);

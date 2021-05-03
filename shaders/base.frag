@@ -12,5 +12,5 @@ layout(set = 1, binding = 0) uniform sampler2D texSampler;
 
 void main() {
    outColor = texture(texSampler, inUV0);
-   outColor *= max(dot(vec3(1,1,0), inNormal), 0.);
+   outColor *= max(dot(normalize(vec3(0,1,1)), inNormal), 0.);
 }

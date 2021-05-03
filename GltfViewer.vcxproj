@@ -21,10 +21,6 @@
   <ItemGroup>
     <ClCompile Include="apps\GltfViewer.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="shaders\shader.frag" />
-    <None Include="shaders\shader.vert" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{8305A916-0468-4395-A069-2F2C1A02BBC0}</ProjectGuid>

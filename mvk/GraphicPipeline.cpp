@@ -9,7 +9,8 @@ void GraphicPipeline::build(vk::Device device,
                             std::vector<vk::PipelineShaderStageCreateInfo>
                             shaderStageCreateInfos,
                             vk::DescriptorSetLayout* descriptorSetLayouts,
-                            uint32_t descriptorLayoutsSize)
+                            uint32_t descriptorLayoutsSize,
+							vk::FrontFace frontFace)
 {
 	/** Vertex Input State settings **/
 	auto bindingDescription = Vertex::getBindingDescription();
@@ -64,7 +65,7 @@ void GraphicPipeline::build(vk::Device device,
 			.rasterizerDiscardEnable = VK_FALSE,
 			.polygonMode = vk::PolygonMode::eFill,
 			.cullMode = vk::CullModeFlagBits::eBack,
-			.frontFace = vk::FrontFace::eClockwise,
+			.frontFace = frontFace,
 			.depthBiasEnable = VK_FALSE,
 			.lineWidth = 1.0f,
 		};

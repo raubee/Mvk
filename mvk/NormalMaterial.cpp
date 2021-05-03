@@ -3,8 +3,8 @@
 void mvk::NormalMaterial::load(const Device device)
 {
 	Material::load(
-		new Shader(device, "shaders/vert.spv",
+		new Shader(device, "shaders/base.vert.spv",
 		           vk::ShaderStageFlagBits::eVertex),
-		new Shader(device, "shaders/frag-norm.spv",
+		new Shader(device, "shaders/norm.frag.spv",
 		           vk::ShaderStageFlagBits::eFragment));
 }

@@ -8,9 +8,9 @@ void BaseMaterial::load(const Device device,
 {
 	albedo = description.albedo;
 
-	Material::load(new Shader(device, "shaders/vert.spv",
+	Material::load(new Shader(device, "shaders/base.vert.spv",
 	                          vk::ShaderStageFlagBits::eVertex),
-	               new Shader(device, "shaders/frag.spv",
+	               new Shader(device, "shaders/base.frag.spv",
 	                          vk::ShaderStageFlagBits::eFragment));
 
 	createDescriptorSetLayout(device);

@@ -8,15 +8,4 @@
       <UniqueIdentifier>{c6e0c31b-ac04-4320-badb-2edc8c7ed2a7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="shaders\shader-norm.frag">
-      <Filter>Fichiers de ressources</Filter>
-    </None>
-    <None Include="shaders\shader.frag">
-      <Filter>Fichiers de ressources</Filter>
-    </None>
-    <None Include="shaders\shader.vert">
-      <Filter>Fichiers de ressources</Filter>
-    </None>
-  </ItemGroup>
 </Project>

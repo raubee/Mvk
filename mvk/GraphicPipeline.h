@@ -17,7 +17,8 @@ namespace mvk
 			std::vector<vk::PipelineShaderStageCreateInfo>
 			shaderStageCreateInfos,
 			vk::DescriptorSetLayout* descriptorSetLayouts,
-			uint32_t descriptorLayoutsSize);
+			uint32_t descriptorLayoutsSize,
+			vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise);
 		
 		void release(vk::Device device);
 

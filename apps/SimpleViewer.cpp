@@ -43,7 +43,7 @@ public:
 				{1.0f, 0.0f}
 			},
 			{
-				{0.5f, 0.0f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f},
+				{0.5f, 0.0f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f},
 				{1.0f, 1.0f}
 			},
 			{
@@ -112,18 +112,22 @@ public:
 			mvk::BaseMaterial::getDescriptorSetLayout(device)
 		};
 
+		const auto descriptorCount =
+			static_cast<uint32_t>(descriptorSetLayouts.size());
+
 		pipelines.standard.build(device,
 		                         swapchain.getSwapchainExtent(),
 		                         renderPass.getRenderPass(),
 		                         materials.standard.
 		                                   getPipelineShaderStageCreateInfo(),
 		                         descriptorSetLayouts.data(),
-		                         static_cast<uint32_t>(descriptorSetLayouts.
-			                         size()));
+		                         descriptorCount,
+		                         vk::FrontFace::eClockwise);
 	}
 
 	~SimpleViewer()
 	{
+		textures.lena.release(device);
 		models.plane.release(device);
 		materials.standard.release(device);
 		pipelines.standard.release(device);

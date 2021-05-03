@@ -54,29 +54,54 @@ class MultiViewer : public mvk::AppBase
 			mvk::BaseMaterial::getDescriptorSetLayout(device)
 		};
 
+		const auto descriptorCount =
+			static_cast<int32_t>(descriptorSetLayouts.size());
+
 		pipelines.standard.build(device,
 		                         swapchain.getSwapchainExtent(),
 		                         renderPass.getRenderPass(),
 		                         materials
 		                         .standard.getPipelineShaderStageCreateInfo(),
 		                         descriptorSetLayouts.data(),
-		                         static_cast<int32_t>(
-			                         descriptorSetLayouts.
-			                         size()));
+		                         descriptorCount);
 	}
 
 	void loadPlane()
 	{
 		auto vertices = std::vector<mvk::Vertex>({
-			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
-			{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
+			{
+				{-0.5f, 0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
+				{0.0f, 0.0f}
+			},
+			{
+				{0.5f, 0.0f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
+				{1.0f, 0.0f}
+			},
+			{
+				{0.5f, 0.0f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f},
+				{1.0f, 1.0f}
+			},
+			{
+				{-0.5f, 0.0f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f},
+				{0.0f, 1.0f}
+			},
 
-			{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f},{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-			{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f},{1.0f, 0.0f}},
-			{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f},{1.0f, 1.0f}},
-			{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f},{0.0f, 1.0f}}
+			{
+				{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
+				{0.0f, 0.0f}
+			},
+			{
+				{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
+				{1.0f, 0.0f}
+			},
+			{
+				{0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f},
+				{1.0f, 1.0f}
+			},
+			{
+				{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f},
+				{0.0f, 1.0f}
+			}
 		});
 
 		auto indices = std::vector<uint16_t>({
@@ -113,15 +138,17 @@ class MultiViewer : public mvk::AppBase
 			mvk::Scene::getDescriptorSetLayout(device)
 		};
 
+		const auto descriptorCount =
+			static_cast<int32_t>(descriptorSetLayouts.size());
+
 		pipelines.normal.build(device,
 		                       swapchain.getSwapchainExtent(),
 		                       renderPass.getRenderPass(),
 		                       materials.normal.
 		                                 getPipelineShaderStageCreateInfo(),
 		                       descriptorSetLayouts.data(),
-		                       static_cast<int32_t>(
-			                       descriptorSetLayouts.
-			                       size()));
+		                       descriptorCount,
+		                       vk::FrontFace::eClockwise);
 	}
 
 public:
@@ -145,17 +172,17 @@ public:
 	}
 
 	void buildCommandBuffer(const vk::CommandBuffer commandBuffer,
-		const vk::Framebuffer framebuffer) override
+	                        const vk::Framebuffer framebuffer) override
 	{
 		const auto extent = swapchain.getSwapchainExtent();
 
 		const vk::CommandBufferBeginInfo commandBufferBeginInfo{};
 		commandBuffer.begin(commandBufferBeginInfo);
 
-		const std::array<float, 4> clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
+		const std::array<float, 4> clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
 		std::array<vk::ClearValue, 2> clearValues{};
 		clearValues[0].setColor(clearColor);
-		clearValues[1].setDepthStencil({ 1.0f, 0 });
+		clearValues[1].setDepthStencil({1.0f, 0});
 
 		const vk::RenderPassBeginInfo renderPassBeginInfo = {
 			.renderPass = renderPass.getRenderPass(),
@@ -169,7 +196,7 @@ public:
 		};
 
 		commandBuffer.beginRenderPass(renderPassBeginInfo,
-			vk::SubpassContents::eInline);
+		                              vk::SubpassContents::eInline);
 
 		drawGanesh(commandBuffer);
 		drawPlane(commandBuffer);
@@ -180,24 +207,24 @@ public:
 
 	void drawGanesh(const vk::CommandBuffer commandBuffer)
 	{
-		const auto graphicPipeline = pipelines.normal;
+		const auto graphicPipeline = pipelines.standard;
 		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
 		const auto pipeline = graphicPipeline.getPipeline();
 		const auto extent = swapchain.getSwapchainExtent();
 
 		std::vector<vk::DescriptorSet> descriptorSets = {
 			scene.getDescriptorSet(0),
-			//materials.standard.getDescriptorSet(0)
+			materials.standard.getDescriptorSet(0)
 		};
 
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-			pipeline);
+		                           pipeline);
 
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-			pipelineLayout, 0,
-			static_cast<uint32_t>(
-				descriptorSets.size()),
-			descriptorSets.data(), 0, nullptr);
+		                                 pipelineLayout, 0,
+		                                 static_cast<uint32_t>(
+			                                 descriptorSets.size()),
+		                                 descriptorSets.data(), 0, nullptr);
 
 		vk::Viewport viewport = {
 			.x = 0.0f,
@@ -220,14 +247,14 @@ public:
 		const auto vertexBuffer = models.ganesh.vertexBuffer;
 		const auto indexBuffer = models.ganesh.indexBuffer;
 
-		vk::DeviceSize offsets[] = { 0 };
+		vk::DeviceSize offsets[] = {0};
 
 		commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer.buffer, offsets);
 
 		const auto size = models.ganesh.indicesCount;
 
 		commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
-			vk::IndexType::eUint16);
+		                              vk::IndexType::eUint16);
 
 		commandBuffer.drawIndexed(size, 1, 0, 0, 0);
 	}
@@ -244,13 +271,13 @@ public:
 		};
 
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-			pipeline);
+		                           pipeline);
 
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-			pipelineLayout, 0,
-			static_cast<uint32_t>(
-				descriptorSets.size()),
-			descriptorSets.data(), 0, nullptr);
+		                                 pipelineLayout, 0,
+		                                 static_cast<uint32_t>(
+			                                 descriptorSets.size()),
+		                                 descriptorSets.data(), 0, nullptr);
 
 		vk::Viewport viewport = {
 			.x = 0.0f,
@@ -273,14 +300,14 @@ public:
 		const auto vertexBuffer = models.plane.vertexBuffer;
 		const auto indexBuffer = models.plane.indexBuffer;
 
-		vk::DeviceSize offsets[] = { 0 };
+		vk::DeviceSize offsets[] = {0};
 
 		commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer.buffer, offsets);
 
 		const auto size = models.plane.indicesCount;
 
 		commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
-			vk::IndexType::eUint16);
+		                              vk::IndexType::eUint16);
 
 		commandBuffer.drawIndexed(size, 1, 0, 0, 0);
 	}

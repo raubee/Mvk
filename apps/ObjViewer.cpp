@@ -53,15 +53,16 @@ public:
 			mvk::BaseMaterial::getDescriptorSetLayout(device)
 		};
 
+		const auto descriptorCount =
+			static_cast<int32_t>(descriptorSetLayouts.size());
+
 		pipelines.standard.build(device,
 		                         swapchain.getSwapchainExtent(),
 		                         renderPass.getRenderPass(),
 		                         materials
 		                         .standard.getPipelineShaderStageCreateInfo(),
 		                         descriptorSetLayouts.data(),
-		                         static_cast<int32_t>(
-			                         descriptorSetLayouts.
-			                         size()));
+		                         descriptorCount);
 	}
 
 	~ObjViewer()

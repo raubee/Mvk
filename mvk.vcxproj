@@ -151,6 +151,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include=".editorconfig" />
+    <None Include="shaders\base.frag" />
+    <None Include="shaders\base.vert" />
+    <None Include="shaders\norm.frag" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mvk\AppBase.h" />

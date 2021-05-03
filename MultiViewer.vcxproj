@@ -21,11 +21,6 @@
   <ItemGroup>
     <ClCompile Include="apps\MultiViewer.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="shaders\shader-norm.frag" />
-    <None Include="shaders\shader.frag" />
-    <None Include="shaders\shader.vert" />
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{2C960782-26DF-43B2-BE4D-B275D3925EE8}</ProjectGuid>

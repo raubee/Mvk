@@ -9,9 +9,21 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
+    <Filter Include="Fichiers de ressources">
+      <UniqueIdentifier>{ba8a9229-a05f-4890-86cf-e9e86473c2df}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconfig" />
+    <None Include="shaders\base.frag">
+      <Filter>Fichiers de ressources</Filter>
+    </None>
+    <None Include="shaders\base.vert">
+      <Filter>Fichiers de ressources</Filter>
+    </None>
+    <None Include="shaders\norm.frag">
+      <Filter>Fichiers de ressources</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mvk\AppBase.h">

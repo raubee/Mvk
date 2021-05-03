@@ -21,14 +21,6 @@
   <ItemGroup>
     <ClCompile Include="apps\SimpleViewer.cpp" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="shaders\shader.frag">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-    <None Include="shaders\shader.vert">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
-  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{AF1CB2B7-1D33-4035-B6E4-8D7EC246252C}</ProjectGuid>
