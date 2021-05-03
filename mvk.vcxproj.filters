@@ -9,22 +9,9 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;ipp;xsd</Extensions>
     </Filter>
-    <Filter Include="Fichiers de ressources">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <None Include=".editorconfig" />
-    <None Include="shaders\shader.frag">
-      <Filter>Fichiers de ressources</Filter>
-    </None>
-    <None Include="shaders\shader.vert">
-      <Filter>Fichiers de ressources</Filter>
-    </None>
-    <None Include="shaders\shader-norm.frag">
-      <Filter>Fichiers de ressources</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mvk\AppBase.h">

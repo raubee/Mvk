@@ -33,13 +33,12 @@ public:
 		.appName = "GltfViewer"
 		})
 	{
-		const auto modelPath = "assets/models/cube/cube1.gltf";
+		const auto modelPath = "assets/models/cube/cube2.gltf";
 		//const auto modelPath = "assets/models/buster_drone/scene.gltf";
 
 		models.scene.loadFromFile(device, transferQueue, modelPath);
 
-		const auto albedoPath =
-			"assets/models/ganesha/textures/Ganesha_BaseColor.jpg";
+		const auto albedoPath = "assets/textures/lena.jpg";
 
 		textures.albedo.loadFromFile(device, transferQueue, albedoPath,
 			vk::Format::eR8G8B8A8Srgb);

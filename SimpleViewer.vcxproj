@@ -21,6 +21,14 @@
   <ItemGroup>
     <ClCompile Include="apps\SimpleViewer.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\shader.frag">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="shaders\shader.vert">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <ProjectGuid>{AF1CB2B7-1D33-4035-B6E4-8D7EC246252C}</ProjectGuid>
@@ -93,6 +101,10 @@
       <AdditionalLibraryDirectories>$(VK_SDK_PATH)\Lib;$(GLFW_SDK)\lib-vc2019;$(SolutionDir)Lib\x64\Debug</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;mvk.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -137,6 +149,10 @@
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;mvk.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(VK_SDK_PATH)\Lib;$(GLFW_SDK)\lib-vc2019;$(SolutionDir)Lib\x64\Release</AdditionalLibraryDirectories>
     </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

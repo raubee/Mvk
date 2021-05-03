@@ -49,9 +49,8 @@ class MultiViewer : public mvk::AppBase
 
 		materials.standard.load(device, description);
 
-		std::array<vk::DescriptorSetLayout, 3> descriptorSetLayouts = {
+		std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts = {
 			mvk::Scene::getDescriptorSetLayout(device),
-			mvk::Model::getDescriptorSetLayout(device),
 			mvk::BaseMaterial::getDescriptorSetLayout(device)
 		};
 
@@ -69,15 +68,15 @@ class MultiViewer : public mvk::AppBase
 	void loadPlane()
 	{
 		auto vertices = std::vector<mvk::Vertex>({
-			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-			{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}},
+			{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
 
-			{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-			{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-			{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-			{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+			{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f},{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+			{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f},{1.0f, 0.0f}},
+			{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f},{1.0f, 1.0f}},
+			{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f},{0.0f, 1.0f}}
 		});
 
 		auto indices = std::vector<uint16_t>({
@@ -181,14 +180,14 @@ public:
 
 	void drawGanesh(const vk::CommandBuffer commandBuffer)
 	{
-		const auto graphicPipeline = pipelines.standard;
+		const auto graphicPipeline = pipelines.normal;
 		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
 		const auto pipeline = graphicPipeline.getPipeline();
 		const auto extent = swapchain.getSwapchainExtent();
 
 		std::vector<vk::DescriptorSet> descriptorSets = {
 			scene.getDescriptorSet(0),
-			materials.standard.getDescriptorSet(0)
+			//materials.standard.getDescriptorSet(0)
 		};
 
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,

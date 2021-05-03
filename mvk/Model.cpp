@@ -179,31 +179,91 @@ void Model::loadNode(Node* parent, const tinygltf::Node node, uint32_t nodeId,
 			uint32_t verticesCount = 0;
 			uint32_t indicesCount = 0;
 
+			// Position
 			const auto positionAccessor =
 				model.accessors[primitive.attributes.find("POSITION")->second];
 			const auto positionBufferView =
 				model.bufferViews[positionAccessor.bufferView];
-			const auto buffer = model.buffers[positionBufferView.buffer];
-			const auto byteStride =
+			const auto posBuffer = model.buffers[positionBufferView.buffer];
+			const auto posStride =
 				positionAccessor.ByteStride(positionBufferView)
 					? positionAccessor.ByteStride(positionBufferView) / sizeof(
 						float)
 					: tinygltf::GetComponentSizeInBytes(TINYGLTF_TYPE_VEC3);
 			const auto posData =
-				reinterpret_cast<const float*>(&buffer.data[
+				reinterpret_cast<const float*>(&posBuffer.data[
 					positionAccessor.byteOffset +
 					positionBufferView.byteOffset]);
 
 			verticesCount = positionAccessor.count;
+
+			// UVs
+			const float* uv1Data = nullptr;
+			uint32_t uv1Stride = 0;
+
+			if (primitive.attributes.find("TEXCOORD_0") != primitive
+			                                               .attributes.end())
+			{
+				const auto uv1Accessor =
+					model.accessors[primitive
+					                .attributes.find("TEXCOORD_0")->second];
+
+				const auto uv1BufferView =
+					model.bufferViews[uv1Accessor.bufferView];
+
+				uv1Stride =
+					uv1Accessor.ByteStride(uv1BufferView)
+						? uv1Accessor.ByteStride(uv1BufferView) / sizeof(float)
+						: tinygltf::GetComponentSizeInBytes(TINYGLTF_TYPE_VEC2);
+
+				uv1Data = reinterpret_cast<const float*>(&model.buffers[
+					uv1BufferView.buffer].data[
+					uv1Accessor.byteOffset + uv1BufferView.byteOffset]);
+			}
+
+			// Normal
+			const float* normalData = nullptr;
+			uint32_t normalStride = 0;
+
+			if (primitive.attributes.find("NORMAL") != primitive
+			                                           .attributes.end())
+			{
+				const auto normalAccessor =
+					model.accessors[primitive
+					                .attributes.find("NORMAL")->second];
+
+				const auto normalBufferView =
+					model.bufferViews[normalAccessor.bufferView];
+
+				normalStride =
+					normalAccessor.ByteStride(normalBufferView)
+						? normalAccessor.ByteStride(normalBufferView) / sizeof(
+							float)
+						: tinygltf::GetComponentSizeInBytes(TINYGLTF_TYPE_VEC3);
+
+				normalData = reinterpret_cast<const float*>(&model.buffers[
+					normalBufferView.buffer].data[
+					normalAccessor.byteOffset + normalBufferView.byteOffset]);
+			}
+
+			// Create vertices
 			for (auto v = 0; v < verticesCount; v++)
 			{
 				Vertex vertex{
-					.position = glm::vec4(
-						glm::make_vec3(&posData[v * byteStride]), 1.0f)
+					.position = glm::make_vec3(&posData[v * posStride]),
+					.color = glm::vec3(0),
+					.normal = normalData
+						          ? glm::make_vec3(
+							          &normalData[v * normalStride])
+						          : glm::vec3(0),
+					.texCoord = uv1Data
+						            ? glm::make_vec2(&uv1Data[v * uv1Stride])
+						            : glm::vec2(0)
 				};
 
 				vertices.push_back(vertex);
 			}
+
 
 			const auto hasIndices = primitive.indices > -1;
 
@@ -215,16 +275,17 @@ void Model::loadNode(Node* parent, const tinygltf::Node node, uint32_t nodeId,
 
 				indicesCount = indicesAccessor.count;
 
-				const void* dataPtr = &(buffer.data[indicesAccessor.byteOffset
+				const void* dataPtr = &(posBuffer.data[indicesAccessor.
+					byteOffset
 					+ indicesBufferView.byteOffset]);
 
 				switch (indicesAccessor.componentType)
 				{
 				case TINYGLTF_PARAMETER_TYPE_UNSIGNED_INT:
 					{
-						const uint32_t* buf = static_cast<const uint32_t*>(
+						const auto buf = static_cast<const uint32_t*>(
 							dataPtr);
-						for (size_t index = 0; index < indicesAccessor.count;
+						for (auto index = 0; index < indicesAccessor.count;
 						     index++)
 						{
 							indices.push_back(buf[index]);
@@ -233,9 +294,9 @@ void Model::loadNode(Node* parent, const tinygltf::Node node, uint32_t nodeId,
 					}
 				case TINYGLTF_PARAMETER_TYPE_UNSIGNED_SHORT:
 					{
-						const uint16_t* buf = static_cast<const uint16_t*>(
+						const auto buf = static_cast<const uint16_t*>(
 							dataPtr);
-						for (size_t index = 0; index < indicesAccessor.count;
+						for (auto index = 0; index < indicesAccessor.count;
 						     index++)
 						{
 							indices.push_back(buf[index] + vertexStart);
@@ -244,9 +305,9 @@ void Model::loadNode(Node* parent, const tinygltf::Node node, uint32_t nodeId,
 					}
 				case TINYGLTF_PARAMETER_TYPE_UNSIGNED_BYTE:
 					{
-						const uint8_t* buf = static_cast<const uint8_t*>(dataPtr
+						const auto buf = static_cast<const uint8_t*>(dataPtr
 						);
-						for (size_t index = 0; index < indicesAccessor.count;
+						for (auto index = 0; index < indicesAccessor.count;
 						     index++)
 						{
 							indices.push_back(buf[index] + vertexStart);
@@ -283,12 +344,17 @@ void Model::loadFromObjFile(const char* filePath, std::vector<Vertex>& vertices,
 			mvk::Vertex vertex{};
 			vertex.position = {
 				attribute.vertices[3 * index.vertex_index + 0],
-				attribute.vertices[3 * index.vertex_index + 1],
 				attribute.vertices[3 * index.vertex_index + 2],
+				attribute.vertices[3 * index.vertex_index + 1],
 			};
 			vertex.texCoord = {
 				attribute.texcoords[2 * index.texcoord_index + 0],
 				1.0f - attribute.texcoords[2 * index.texcoord_index + 1]
+			};
+			vertex.normal = {
+				attribute.normals[3 * index.normal_index + 0],
+				attribute.normals[3 * index.normal_index + 2],
+				attribute.normals[3 * index.normal_index + 1],
 			};
 			vertex.color = {1.0f, 1.0f, 1.0f};
 			vertices.push_back(vertex);

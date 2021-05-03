@@ -1,12 +1,18 @@
 #include "AppBase.h"
-#include "NormalMaterial.h"
+#include "BaseMaterial.h"
 
 class SimpleViewer : public mvk::AppBase
 {
 public:
+	struct Textures
+	{
+		mvk::Texture2D lena;
+	}
+	textures;
+
 	struct Materials
 	{
-		mvk::NormalMaterial normal;
+		mvk::BaseMaterial standard;
 	}
 	materials;
 
@@ -18,7 +24,7 @@ public:
 
 	struct Pipelines
 	{
-		mvk::GraphicPipeline normal;
+		mvk::GraphicPipeline standard;
 	}
 	pipelines;
 
@@ -28,15 +34,39 @@ public:
 		})
 	{
 		auto vertices = std::vector<mvk::Vertex>({
-			{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-			{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-			{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-			{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+			{
+				{-0.5f, 0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
+				{0.0f, 0.0f}
+			},
+			{
+				{0.5f, 0.0f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
+				{1.0f, 0.0f}
+			},
+			{
+				{0.5f, 0.0f, -0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f},
+				{1.0f, 1.0f}
+			},
+			{
+				{-0.5f, 0.0f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f},
+				{0.0f, 1.0f}
+			},
 
-			{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-			{{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-			{{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-			{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
+			{
+				{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
+				{0.0f, 0.0f}
+			},
+			{
+				{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
+				{1.0f, 0.0f}
+			},
+			{
+				{0.5f, -0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f},
+				{1.0f, 1.0f}
+			},
+			{
+				{-0.5f, -0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f, 0.0f},
+				{0.0f, 1.0f}
+			}
 		});
 
 		auto indices = std::vector<uint16_t>({
@@ -67,24 +97,36 @@ public:
 			                                  vk::BufferUsageFlagBits::
 			                                  eIndexBuffer);
 
-		materials.normal.load(device);
+		const auto path = "assets/textures/lena.jpg";
 
-		auto sceneLayout = mvk::Scene::getDescriptorSetLayout(device);
+		textures.lena.loadFromFile(device, transferQueue, path,
+		                           vk::Format::eR8G8B8A8Srgb);
 
-		pipelines.normal.build(device,
-		                       swapchain.getSwapchainExtent(),
-		                       renderPass.getRenderPass(),
-		                       materials.normal.
-		                                 getPipelineShaderStageCreateInfo(),
-		                       &sceneLayout,
-		                       1);
+		mvk::BaseMaterialDescription description;
+		description.albedo = &textures.lena;
+
+		materials.standard.load(device, description);
+
+		std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts = {
+			mvk::Scene::getDescriptorSetLayout(device),
+			mvk::BaseMaterial::getDescriptorSetLayout(device)
+		};
+
+		pipelines.standard.build(device,
+		                         swapchain.getSwapchainExtent(),
+		                         renderPass.getRenderPass(),
+		                         materials.standard.
+		                                   getPipelineShaderStageCreateInfo(),
+		                         descriptorSetLayouts.data(),
+		                         static_cast<uint32_t>(descriptorSetLayouts.
+			                         size()));
 	}
 
 	~SimpleViewer()
 	{
 		models.plane.release(device);
-		materials.normal.release(device);
-		pipelines.normal.release(device);
+		materials.standard.release(device);
+		pipelines.standard.release(device);
 	}
 
 	void buildCommandBuffer(const vk::CommandBuffer commandBuffer,
@@ -114,12 +156,13 @@ public:
 		commandBuffer.beginRenderPass(renderPassBeginInfo,
 		                              vk::SubpassContents::eInline);
 
-		const auto graphicPipeline = pipelines.normal;
+		const auto graphicPipeline = pipelines.standard;
 		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
 		const auto pipeline = graphicPipeline.getPipeline();
 
 		std::vector<vk::DescriptorSet> descriptorSets = {
-			scene.getDescriptorSet(0)
+			scene.getDescriptorSet(0),
+			materials.standard.getDescriptorSet(0)
 		};
 
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,

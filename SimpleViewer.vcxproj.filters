@@ -3,4 +3,17 @@
   <ItemGroup>
     <ClCompile Include="apps\SimpleViewer.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Fichiers de ressources">
+      <UniqueIdentifier>{50325587-76ed-4596-ac0d-b54551b02d50}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="shaders\shader.frag">
+      <Filter>Fichiers de ressources</Filter>
+    </None>
+    <None Include="shaders\shader.vert">
+      <Filter>Fichiers de ressources</Filter>
+    </None>
+  </ItemGroup>
 </Project>

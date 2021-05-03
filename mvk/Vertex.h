@@ -8,9 +8,10 @@ namespace mvk
 {
 	struct Vertex
 	{
-		glm::vec3 position;
-		glm::vec3 color;
-		glm::vec2 texCoord;
+		glm::vec3 position; // location = 0
+		glm::vec3 color; // 1
+		glm::vec3 normal; // 2 
+		glm::vec2 texCoord; // 3
 
 		static vk::VertexInputBindingDescription getBindingDescription()
 		{
@@ -23,10 +24,10 @@ namespace mvk
 			return vertexInputBindingDescription;
 		}
 
-		static std::array<vk::VertexInputAttributeDescription, 3>
+		static std::array<vk::VertexInputAttributeDescription, 4>
 		getAttributeDescriptions()
 		{
-			std::array<vk::VertexInputAttributeDescription, 3>
+			std::array<vk::VertexInputAttributeDescription, 4>
 				vertexInputAttributeDescriptions = {};
 
 			vertexInputAttributeDescriptions[0] = vk::
@@ -48,6 +49,14 @@ namespace mvk
 			vertexInputAttributeDescriptions[2] = vk::
 				VertexInputAttributeDescription{
 					.location = 2,
+					.binding = 0,
+					.format = vk::Format::eR32G32B32Sfloat,
+					.offset = offsetof(Vertex, normal)
+			};
+
+			vertexInputAttributeDescriptions[3] = vk::
+				VertexInputAttributeDescription{
+					.location = 3,
 					.binding = 0,
 					.format = vk::Format::eR32G32Sfloat,
 					.offset = offsetof(Vertex, texCoord)

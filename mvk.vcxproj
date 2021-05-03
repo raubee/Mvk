@@ -105,6 +105,9 @@
       <AdditionalLibraryDirectories>$(VK_SDK_PATH)\Lib;$(GLFW_SDK)\lib-vc2019;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>for %%f in (.\shaders\*.vert .\shaders\*.tesc .\shaders\*.tese .\shaders\*.geom .\shaders\*.frag .\shaders\*.comp) do %VK_SDK_PATH%\Bin\glslangValidator.exe -V -o %%f.spv %%f</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -142,12 +145,12 @@
       <AdditionalLibraryDirectories>$(VK_SDK_PATH)\Lib;$(GLFW_SDK)\lib-vc2019\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>for %%f in (.\shaders\*.vert .\shaders\*.tesc .\shaders\*.tese .\shaders\*.geom .\shaders\*.frag .\shaders\*.comp) do %VK_SDK_PATH%\Bin\glslangValidator.exe -V -o %%f.spv %%f</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <None Include=".editorconfig" />
-    <None Include="shaders\shader-norm.frag" />
-    <None Include="shaders\shader.frag" />
-    <None Include="shaders\shader.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mvk\AppBase.h" />
