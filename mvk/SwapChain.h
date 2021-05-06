@@ -12,6 +12,8 @@ namespace mvk
 
 	class SwapChain
 	{
+		Device* ptrDevice;
+
 		vk::SwapchainKHR swapchain;
 		std::vector<vk::CommandBuffer> commandBuffers;
 		std::vector<SwapchainFrame> swapchainFrames;
@@ -24,7 +26,7 @@ namespace mvk
 		vk::Format frameFormat = vk::Format::eUndefined;
 		vk::Format depthFormat = vk::Format::eUndefined;
 
-		void createDepthImageView(Device device, vk::Queue transferQueue);
+		void createDepthImageView(vk::Queue transferQueue);
 
 		SurfaceCapabilitiesKHRBatch getSwapchainCapabilities(
 			vk::PhysicalDevice physicalDevice,
@@ -38,20 +40,17 @@ namespace mvk
 			vk::SurfaceKHR surface) const;
 
 	public:
-		void create(vk::PhysicalDevice physicalDevice,
-		            Device device,
+		void create(Device* device,
 		            vk::Queue transferQueue,
 		            vk::SurfaceKHR surface);
 
-		void createSwapChainKHR(vk::PhysicalDevice physicalDevice,
-		                        Device device,
-		                        vk::SurfaceKHR surface);
+		void createSwapChainKHR(vk::SurfaceKHR surface);
 
-		void createCommandBuffers(Device device);
+		void createCommandBuffers();
 
-		void createSwapchainFrames(Device device, vk::RenderPass renderPass);
+		void createSwapchainFrames(vk::RenderPass renderPass);
 
-		void release(Device device);
+		void release() const;
 
 		vk::SwapchainKHR getSwapchain() const { return swapchain; }
 

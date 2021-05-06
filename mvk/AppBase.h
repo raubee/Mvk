@@ -41,11 +41,19 @@ namespace mvk
 
 		uint32_t graphicsQueueFamilyIndex;
 		uint32_t transferQueueFamilyIndex;
-		
-	private:
-		const char* appName;
+
 		int width;
 		int height;
+
+	private:
+		const char* appName;
+		
+		inline static double lastMouseX = 0;
+		inline static double lastMouseY = 0;
+		inline static double scrollX = 0;
+		inline static double scrollY = 0;
+		inline static bool mouseLeftDown = false;
+		inline static bool mouseRightDown = false;
 
 		vk::ApplicationInfo applicationInfo;
 
@@ -60,13 +68,19 @@ namespace mvk
 		vk::Semaphore imageAvailableSemaphore;
 		vk::Semaphore renderFinishedSemaphore;
 
-		bool needResize;
-
 		std::chrono::time_point<std::chrono::high_resolution_clock> startTime;
+		std::chrono::time_point<std::chrono::high_resolution_clock> lastTime;
 
 		void setupWindow(bool fullscreen);
-		static void framebufferResizeCallback(GLFWwindow* window, int width,
-		                                      int height);
+
+		static void glfwCursorPositionCallback(GLFWwindow* window, double xPos,
+			double yPos);
+
+		static void glfwMouseButtonCallback(GLFWwindow* window, int button,
+			int action, int mods);
+
+		static void glfwScrollCallback(GLFWwindow* window, double xOffset,
+			double yOffset);
 
 		void filterAvailableLayers(std::vector<const char*>& layers);
 
@@ -88,8 +102,8 @@ namespace mvk
 
 		void waitIdle() const;
 		void drawFrame();
-		void update() const;
-		void setSwapchainDirty();
+		void update();
+		void updateWindow();
 
 	public:
 		AppBase(AppInfo info);

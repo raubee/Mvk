@@ -2,30 +2,33 @@
 
 using namespace mvk;
 
-void Material::load(Shader* vertShader,
+void Material::load(Device* device,
+                    Shader* vertShader,
                     Shader* fragShader,
                     Shader* geoShader,
                     Shader* tesShader)
 {
+	this->ptrDevice = device;
+
 	this->vertShader = vertShader;
 	this->fragShader = fragShader;
 	this->geoShader = geoShader;
 	this->tesShader = tesShader;
 }
 
-void Material::release(const Device device)
+void Material::release()
 {
 	if (vertShader != nullptr)
-		vertShader->release(device);
+		vertShader->release();
 
 	if (fragShader != nullptr)
-		fragShader->release(device);
+		fragShader->release();
 
 	if (geoShader != nullptr)
-		geoShader->release(device);
+		geoShader->release();
 
 	if (tesShader != nullptr)
-		tesShader->release(device);
+		tesShader->release();
 }
 
 std::vector<vk::PipelineShaderStageCreateInfo> Material::

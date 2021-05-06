@@ -8,19 +8,15 @@ namespace mvk
 	class Device
 	{
 	public:
-		operator vk::Device() const { return device; };
-		operator vk::CommandPool() const { return commandPool; };
-		operator vma::Allocator() const { return allocator; };
-
-		vk::Device device;
+		vk::Device logicalDevice;
 		vma::Allocator allocator;
-		vk::PhysicalDevice* physicalDevice;
+		vk::PhysicalDevice physicalDevice;
 		vk::CommandPool commandPool;
 		uint32_t graphicsQueueFamilyIndex;
 
 		void filterDeviceExtensions(std::vector<const char*>& extensions) const
 		{
-			auto availableLayers = physicalDevice->
+			auto availableLayers = physicalDevice.
 				enumerateDeviceExtensionProperties();
 
 #if (NDEBUG)
@@ -84,7 +80,7 @@ namespace mvk
 			}
 		}
 
-		void createDevice(vk::PhysicalDevice* physicalDevice,
+		void createDevice(vk::PhysicalDevice physicalDevice,
 		                  vk::Instance instance,
 		                  PreferredQueueFamilySettings
 		                  preferredQueueFamilySetting,
@@ -144,19 +140,20 @@ namespace mvk
 
 #if (NDEBUG)
 			/* List device validation layers */
-			auto deviceLayers = physicalDevice->
-				enumerateDeviceLayerProperties();
+			auto deviceLayers = physicalDevice.enumerateDeviceLayerProperties();
+			
 			std::cout
 				<< "Supported devices layers: "
 				<< std::endl;
-			for (auto layer : deviceLayers)
+			
+			for (const auto& layer : deviceLayers)
 			{
 				std::cout << layer.layerName << std::endl;
 			}
 			std::cout << std::endl;
 #endif
 
-			auto deviceFeatures = physicalDevice->getFeatures();
+			auto deviceFeatures = physicalDevice.getFeatures();
 
 			const vk::DeviceCreateInfo deviceCreateInfo{
 				.queueCreateInfoCount = static_cast<uint32_t>(deviceQueues.
@@ -168,9 +165,9 @@ namespace mvk
 				.pEnabledFeatures = &deviceFeatures
 			};
 
-			device = physicalDevice->createDevice(deviceCreateInfo);
+			logicalDevice = physicalDevice.createDevice(deviceCreateInfo);
 
-			allocator = alloc::init(*physicalDevice, device, instance);
+			allocator = alloc::init(physicalDevice, logicalDevice, instance);
 
 			std::cout << "Logical device created!" << std::endl;
 
@@ -183,7 +180,8 @@ namespace mvk
 				.queueFamilyIndex = graphicsQueueFamilyIndex
 			};
 
-			commandPool = device.createCommandPool(commandPoolCreateInfo);
+			commandPool = logicalDevice.
+				createCommandPool(commandPoolCreateInfo);
 		}
 
 		vk::CommandBuffer createCommandBuffer() const
@@ -193,13 +191,14 @@ namespace mvk
 				.commandBufferCount = 1
 			};
 
-			return device.allocateCommandBuffers(commandBufferAllocateInfo).
-			              front();
+			return logicalDevice.allocateCommandBuffers(
+				                     commandBufferAllocateInfo).
+			                     front();
 		}
 
 		void freeCommandBuffer(vk::CommandBuffer commandBuffer) const
 		{
-			device.freeCommandBuffers(commandPool, 1, &commandBuffer);
+			logicalDevice.freeCommandBuffers(commandPool, 1, &commandBuffer);
 		}
 
 		vk::Result acquireNextImageKHR(const vk::SwapchainKHR swapchain,
@@ -207,11 +206,11 @@ namespace mvk
 		                               imageAvailableSemaphore,
 		                               uint32_t* imageIndex) const
 		{
-			return device.acquireNextImageKHR(swapchain,
-			                                  UINT64_MAX,
-			                                  imageAvailableSemaphore,
-			                                  nullptr,
-			                                  imageIndex);
+			return logicalDevice.acquireNextImageKHR(swapchain,
+			                                         UINT64_MAX,
+			                                         imageAvailableSemaphore,
+			                                         nullptr,
+			                                         imageIndex);
 		}
 
 		vk::CommandBuffer beginOneTimeSubmitCommands() const
@@ -454,7 +453,7 @@ namespace mvk
 
 		void waitIdle() const
 		{
-			device.waitIdle();
+			logicalDevice.waitIdle();
 		}
 
 		void destroyImage(const alloc::Image image) const
@@ -469,9 +468,9 @@ namespace mvk
 
 		void destroy() const
 		{
-			device.destroyCommandPool(commandPool);
+			logicalDevice.destroyCommandPool(commandPool);
 			allocator.destroy();
-			device.destroy();
+			logicalDevice.destroy();
 		}
 	};
 }

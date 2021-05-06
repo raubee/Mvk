@@ -1,33 +1,39 @@
 #include "Scene.h"
-#include "UniformBufferObject.h"
 
 using namespace mvk;
 
-void Scene::setup(const Device device, const uint32_t size,
+void Scene::setup(Device* device, const uint32_t size,
                   const vk::Extent2D extent)
 {
-	createUniformBufferObject(device);
-	updateUniformBufferObject(device, 0.0f, extent);
+	this->ptrDevice = device;
+
+	modelMatrix = glm::rotate(glm::mat4(1.0f), 0.0f,
+		glm::vec3(0.0f, 1.0f, 0.0f));
+
+	createUniformBufferObject();
+	updateUniformBufferObject(0.0f, extent);
 	createDescriptorSetLayout(device);
-	createDescriptorPool(device, size);
-	createDescriptorSets(device, size);
-	updateDescriptorSets(device);
+	createDescriptorPool(size);
+	createDescriptorSets(size);
+	updateDescriptorSets();
 }
 
-void Scene::update(const Device device, const float time,
-                   const vk::Extent2D extent) const
+void Scene::update(const float time, const vk::Extent2D extent) const
 {
-	updateUniformBufferObject(device, time, extent);
+	updateUniformBufferObject(time, extent);
 }
 
-void Scene::release(const Device device) const
+void Scene::release() const
 {
-	device.device.destroyDescriptorPool(descriptorPool);
-	device.device.destroyDescriptorSetLayout(descriptorSetLayout);
-	device.destroyBuffer(uniformBuffer);
+	ptrDevice->destroyBuffer(uniformBuffer);
+	ptrDevice->logicalDevice.destroyDescriptorPool(descriptorPool);
+
+	if (descriptorSetLayout)
+		ptrDevice->logicalDevice
+		         .destroyDescriptorSetLayout(descriptorSetLayout);
 }
 
-void Scene::createUniformBufferObject(const Device device)
+void Scene::createUniformBufferObject()
 {
 	const auto size = sizeof(UniformBufferObject);
 
@@ -37,10 +43,10 @@ void Scene::createUniformBufferObject(const Device device)
 	};
 
 	uniformBuffer =
-		alloc::allocateCpuToGpuBuffer(vma::Allocator(device), bufferCreateInfo);
+		alloc::allocateCpuToGpuBuffer(ptrDevice->allocator, bufferCreateInfo);
 }
 
-void Scene::createDescriptorPool(const Device device, const uint32_t size)
+void Scene::createDescriptorPool(const uint32_t size)
 {
 	std::array<vk::DescriptorPoolSize, 1> descriptorPoolSizes{};
 	descriptorPoolSizes[0].type = vk::DescriptorType::eUniformBuffer;
@@ -53,11 +59,11 @@ void Scene::createDescriptorPool(const Device device, const uint32_t size)
 		.pPoolSizes = descriptorPoolSizes.data()
 	};
 
-	descriptorPool = vk::Device(device)
-		.createDescriptorPool(descriptorPoolCreateInfo);
+	descriptorPool = ptrDevice->logicalDevice
+	                          .createDescriptorPool(descriptorPoolCreateInfo);
 }
 
-void Scene::createDescriptorSets(const Device device, const uint32_t size)
+void Scene::createDescriptorSets(const uint32_t size)
 {
 	std::vector<vk::DescriptorSetLayout> descriptorSetLayouts
 		(size, descriptorSetLayout);
@@ -68,13 +74,14 @@ void Scene::createDescriptorSets(const Device device, const uint32_t size)
 		.pSetLayouts = descriptorSetLayouts.data()
 	};
 
-	descriptorSets =
-		vk::Device(device).allocateDescriptorSets(descriptorSetAllocateInfo);
+	descriptorSets = ptrDevice->logicalDevice
+	                          .allocateDescriptorSets(
+		                          descriptorSetAllocateInfo);
 }
 
-void Scene::updateDescriptorSets(const Device device)
+void Scene::updateDescriptorSets()
 {
-	for (auto descriptorSet : descriptorSets)
+	for (const auto& descriptorSet : descriptorSets)
 	{
 		const vk::DescriptorBufferInfo descriptorBufferInfo =
 		{
@@ -93,25 +100,19 @@ void Scene::updateDescriptorSets(const Device device)
 			.pBufferInfo = &descriptorBufferInfo,
 		};
 
-		vk::Device(device)
-			.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+		ptrDevice->logicalDevice
+		      .updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 	}
 }
 
-void Scene::updateUniformBufferObject(const Device device, const float time,
+void Scene::updateUniformBufferObject(const float time,
                                       const vk::Extent2D extent) const
 {
 	UniformBufferObject ubo{};
-	ubo.model = glm::rotate(glm::mat4(1.0f), 0.f,
-	                        glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.view = glm::lookAt(glm::vec3(0.0f, 2.0f, 5.0f),
-	                       glm::vec3(0.0f, .75f, 0.0f),
-	                       glm::vec3(0.0f, 1.0f, 0.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), extent.width /
-	                            static_cast<float>(extent.height),
-	                            0.1f, 100.0f);
+	ubo.model = modelMatrix;
+	ubo.view = camera.viewMatrix;
+	ubo.proj = camera.projMatrix;
 	ubo.proj[1][1] *= -1;
 
-	mapDataToBuffer(vma::Allocator(device), uniformBuffer, &ubo, sizeof ubo);
+	mapDataToBuffer(ptrDevice->allocator, uniformBuffer, &ubo, sizeof ubo);
 }
-

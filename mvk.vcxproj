@@ -158,6 +158,7 @@
   <ItemGroup>
     <ClInclude Include="mvk\AppBase.h" />
     <ClInclude Include="mvk\BaseMaterial.h" />
+    <ClInclude Include="mvk\Camera.h" />
     <ClInclude Include="mvk\Device.hpp" />
     <ClInclude Include="mvk\GraphicPipeline.h" />
     <ClInclude Include="mvk\Material.h" />
@@ -169,7 +170,6 @@
     <ClInclude Include="mvk\SwapChain.h" />
     <ClInclude Include="mvk\SwapchainFrame.h" />
     <ClInclude Include="mvk\Texture2D.h" />
-    <ClInclude Include="mvk\UniformBufferObject.h" />
     <ClInclude Include="mvk\Utils.hpp" />
     <ClInclude Include="mvk\Vertex.h" />
     <ClInclude Include="mvk\Vulkan.h" />
@@ -178,6 +178,7 @@
   <ItemGroup>
     <ClCompile Include="mvk\AppBase.cpp" />
     <ClCompile Include="mvk\BaseMaterial.cpp" />
+    <ClCompile Include="mvk\Camera.cpp" />
     <ClCompile Include="mvk\GraphicPipeline.cpp" />
     <ClCompile Include="mvk\Material.cpp" />
     <ClCompile Include="mvk\Model.cpp" />

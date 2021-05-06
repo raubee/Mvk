@@ -1,36 +1,48 @@
 #pragma once
 
-#include "Model.h"
-#include "./VulkanVma.h"
+#include "Device.hpp"
+#include "Camera.h"
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
 namespace mvk
 {
+	struct UniformBufferObject
+	{
+		glm::mat4 model;
+		glm::mat4 view;
+		glm::mat4 proj;
+	};
+
 	class Scene
 	{
+		Device* ptrDevice;
+
 		alloc::Buffer uniformBuffer;
 		vk::DescriptorPool descriptorPool;
 		std::vector<vk::DescriptorSet> descriptorSets;
 		inline static vk::DescriptorSetLayout descriptorSetLayout;
 
+		void createDescriptorPool(uint32_t size);
+		void createDescriptorSets(uint32_t size);
+		void createUniformBufferObject();
+		void updateDescriptorSets();
+		void updateUniformBufferObject(float time,
+			vk::Extent2D extent) const;
+
 	public:
+		
+		Camera camera;
+		
+		glm::mat4 modelMatrix;
 
-		void setup(Device device, uint32_t size, vk::Extent2D extent);
-		void update(Device device, float time, vk::Extent2D extent) const;
-		void release(Device device) const;
+		void setup(Device* device, uint32_t size, vk::Extent2D extent);
+		void update(float time, vk::Extent2D extent) const;
+		void release() const;
 
-		void createDescriptorPool(Device device, uint32_t size);
-		void createDescriptorSets(Device device, uint32_t size);
-		void createUniformBufferObject(Device device);
-		void updateDescriptorSets(Device device);
-		void updateUniformBufferObject(Device device, float time,
-		                               vk::Extent2D extent) const;
-
-		static void createDescriptorSetLayout(const Device device)
+		static void createDescriptorSetLayout(Device* device)
 		{
 			const vk::DescriptorSetLayoutBinding uniformBufferLayoutBinding = {
 				.binding = 0,
@@ -49,12 +61,11 @@ namespace mvk
 					.pBindings = layoutBindings.data()
 			};
 
-			descriptorSetLayout = vk::Device(device).createDescriptorSetLayout(
-				descriptorSetLayoutCreateInfo);
+			descriptorSetLayout = device->logicalDevice
+			.createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
 		}
 
-		static vk::DescriptorSetLayout getDescriptorSetLayout(
-			const Device device)
+		static vk::DescriptorSetLayout getDescriptorSetLayout(Device* device)
 		{
 			if (!descriptorSetLayout)
 			{

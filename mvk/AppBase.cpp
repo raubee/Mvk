@@ -8,8 +8,8 @@ AppBase::AppBase(const AppInfo info)
 	: appName(info.appName),
 	  width(info.width),
 	  height(info.height),
-	  needResize(false),
-	  startTime(std::chrono::high_resolution_clock::now())
+	  startTime(std::chrono::high_resolution_clock::now()),
+	  lastTime(std::chrono::high_resolution_clock::now())
 {
 	setupWindow(info.fullscreen);
 	createInstance();
@@ -26,12 +26,12 @@ AppBase::~AppBase()
 {
 	waitIdle();
 
-	scene.release(device);
-	renderPass.release(device);
-	swapchain.release(device);
+	scene.release();
+	renderPass.release();
+	swapchain.release();
 
-	vk::Device(device).destroySemaphore(imageAvailableSemaphore);
-	vk::Device(device).destroySemaphore(renderFinishedSemaphore);
+	device.logicalDevice.destroySemaphore(imageAvailableSemaphore);
+	device.logicalDevice.destroySemaphore(renderFinishedSemaphore);
 
 	device.destroy();
 
@@ -58,7 +58,6 @@ void AppBase::setupWindow(const bool fullscreen)
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	window = glfwCreateWindow(width, height, appName, monitor, nullptr);
-	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
 
 	uint32_t count = 0;
 	const auto extensions =
@@ -70,11 +69,16 @@ void AppBase::setupWindow(const bool fullscreen)
 	}
 
 	glfwSetWindowUserPointer(window, this);
+
+	// Callbacks
+	//glfwSetCursorPosCallback(window, glfwCursorPositionCallback);
+	glfwSetMouseButtonCallback(window, glfwMouseButtonCallback);
+	glfwSetScrollCallback(window, glfwScrollCallback);
 }
 
 void AppBase::filterAvailableLayers(std::vector<const char*>& layers)
 {
-	auto availableLayers = vk::enumerateInstanceLayerProperties();
+	const auto availableLayers = vk::enumerateInstanceLayerProperties();
 
 #if (NDEBUG)
 	/* print supported layers */
@@ -94,7 +98,7 @@ void AppBase::filterAvailableLayers(std::vector<const char*>& layers)
 
 	std::vector<const char*> retainLayers(0);
 
-	for (auto layer : layers)
+	for (const auto& layer : layers)
 	{
 		auto found = std::find_if(availableLayers.begin(),
 		                          availableLayers.end(),
@@ -129,7 +133,7 @@ void AppBase::filterAvailableLayers(std::vector<const char*>& layers)
 
 	layers.clear();
 
-	for (auto layer : retainLayers)
+	for (const auto& layer : retainLayers)
 	{
 		layers.push_back(layer);
 	}
@@ -143,7 +147,7 @@ void AppBase::createInstance()
 		<< "Supported extensions: "
 		<< std::endl;
 
-	auto supportedExtensions = vk::
+	const auto supportedExtensions = vk::
 		enumerateInstanceExtensionProperties(nullptr);
 	std::for_each(supportedExtensions.begin(),
 	              supportedExtensions.end(),
@@ -217,9 +221,9 @@ void AppBase::pickPhysicalDevice()
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME
 	};
 
-	auto physicalDevices = instance.enumeratePhysicalDevices();
+	const auto physicalDevices = instance.enumeratePhysicalDevices();
 
-	for (const auto physicalDevice : physicalDevices)
+	for (const auto& physicalDevice : physicalDevices)
 	{
 		QueueFamilies queueFamilies;
 
@@ -285,7 +289,7 @@ void AppBase::pickPhysicalDevice()
 
 void AppBase::createDevice()
 {
-	device.createDevice(&physicalDevice, instance, preferredQueueFamilySetting,
+	device.createDevice(physicalDevice, instance, preferredQueueFamilySetting,
 	                    graphicsQueueFamilyIndex, transferQueueFamilyIndex);
 }
 
@@ -294,19 +298,21 @@ void AppBase::createQueues()
 	if (preferredQueueFamilySetting ==
 		PreferredQueueFamilySettings::eGraphicsTransferTogether)
 	{
-		graphicsQueue = vk::Device(device).
-			getQueue(graphicsQueueFamilyIndex, 0);
-		presentQueue = vk::Device(device).getQueue(graphicsQueueFamilyIndex, 1);
-		transferQueue = vk::Device(device).
-			getQueue(graphicsQueueFamilyIndex, 2);
+		graphicsQueue = device.logicalDevice.
+		                       getQueue(graphicsQueueFamilyIndex, 0);
+		presentQueue = device.logicalDevice.getQueue(
+			graphicsQueueFamilyIndex, 1);
+		transferQueue = device.logicalDevice.
+		                       getQueue(graphicsQueueFamilyIndex, 2);
 	}
 	else
 	{
-		graphicsQueue = vk::Device(device).
-			getQueue(graphicsQueueFamilyIndex, 0);
-		presentQueue = vk::Device(device).getQueue(graphicsQueueFamilyIndex, 1);
-		transferQueue = vk::Device(device).
-			getQueue(graphicsQueueFamilyIndex, 0);
+		graphicsQueue = device.logicalDevice.
+		                       getQueue(graphicsQueueFamilyIndex, 0);
+		presentQueue = device.logicalDevice.getQueue(
+			graphicsQueueFamilyIndex, 1);
+		transferQueue = device.logicalDevice.
+		                       getQueue(graphicsQueueFamilyIndex, 0);
 	}
 }
 
@@ -328,12 +334,12 @@ void AppBase::drawFrame()
 	}
 	catch (vk::OutOfDateKHRError error)
 	{
-		updateSwapchain();
-		buildCommandBuffers();
+		updateWindow();
 		return;
 	}
 
 	const auto currentSwapchainFrame = swapchain.getSwapchainFrame(imageIndex);
+
 	update();
 
 	vk::Semaphore waitSemaphores[] = {imageAvailableSemaphore};
@@ -372,17 +378,24 @@ void AppBase::drawFrame()
 	}
 	catch (vk::OutOfDateKHRError error)
 	{
-		updateSwapchain();
-		buildCommandBuffers();
+		updateWindow();
 		return;
 	}
 
 	graphicsQueue.waitIdle();
 }
 
-void AppBase::setSwapchainDirty()
+void AppBase::updateWindow()
 {
-	needResize = true;
+	updateSwapchain();
+	buildCommandBuffers();
+
+	const auto extent = swapchain.getSwapchainExtent();
+
+	width = extent.width;
+	height = extent.height;
+
+	scene.camera.updateAspectRatio(float(width) / float(height));
 }
 
 void AppBase::run()
@@ -400,19 +413,17 @@ void AppBase::updateSwapchain()
 {
 	device.waitIdle();
 
-	swapchain.release(device);
-	renderPass.release(device);
+	swapchain.release();
+	renderPass.release();
 
 	createSwapchain();
 	createRenderPass();
 	createSwapchainFrames();
-
-	needResize = false;
 }
 
 void AppBase::createSwapchain()
 {
-	swapchain.create(physicalDevice, device, transferQueue, surface);
+	swapchain.create(&device, transferQueue, surface);
 }
 
 void AppBase::createRenderPass()
@@ -420,27 +431,28 @@ void AppBase::createRenderPass()
 	const auto swapchainFormat = swapchain.getSwapchainFormat();
 	const auto depthFormat = swapchain.getDepthFormat();
 
-	renderPass.create(device, swapchainFormat, depthFormat);
+	renderPass.create(&device, swapchainFormat, depthFormat);
 }
 
 void AppBase::createSwapchainFrames()
 {
-	swapchain.createSwapchainFrames(device, renderPass.getRenderPass());
-	swapchain.createCommandBuffers(device);
+	swapchain.createSwapchainFrames(renderPass.getRenderPass());
+	swapchain.createCommandBuffers();
 }
 
 void AppBase::setupScene()
 {
 	const auto size = static_cast<uint32_t>(swapchain.getSwapchainSwainSize());
 	const auto extent = swapchain.getSwapchainExtent();
-	scene.setup(device, size, extent);
+
+	scene.setup(&device, size, extent);
 }
 
 void AppBase::buildCommandBuffers()
 {
 	auto frames = swapchain.getSwapchainFrames();
 
-	for (const auto frame : frames)
+	for (const auto& frame : frames)
 	{
 		const auto commandBuffer = frame.getCommandBuffer();
 		const auto framebuffer = frame.getFramebuffer();
@@ -452,32 +464,95 @@ void AppBase::buildCommandBuffers()
 void AppBase::createSemaphores()
 {
 	const vk::SemaphoreCreateInfo semaphoreCreateInfo;
-	imageAvailableSemaphore = vk::Device(device).createSemaphore(
+
+	imageAvailableSemaphore = device.logicalDevice.createSemaphore(
 		semaphoreCreateInfo);
-	renderFinishedSemaphore = vk::Device(device).createSemaphore(
+	renderFinishedSemaphore = device.logicalDevice.createSemaphore(
 		semaphoreCreateInfo);
 }
 
-void AppBase::update() const
+void AppBase::update()
 {
 	const auto currentTime = std::chrono::high_resolution_clock::now();
 	const auto time = std::chrono::duration<float, std::chrono::seconds::period>
 		(currentTime - startTime).count();
 
-	scene.update(device, time, swapchain.getSwapchainExtent());
-}
+	const auto deltaTime = std::chrono::duration<
+			float, std::chrono::seconds::period>
+		(currentTime - lastTime).count();
 
-void AppBase::framebufferResizeCallback(GLFWwindow* window, int width,
-                                        int height)
-{
-	const auto app =
-		reinterpret_cast<AppBase*>(glfwGetWindowUserPointer(window));
+	double xPos, yPos;
 
-	while (width == 0 || height == 0)
+	glfwGetCursorPos(window, &xPos, &yPos);
+
+	const auto dX = xPos - lastMouseX;
+	const auto dY = yPos - lastMouseY;
+
+	if (mouseLeftDown)
 	{
-		glfwGetFramebufferSize(window, &width, &height);
-		glfwWaitEvents();
+		scene.camera.rotate(glm::vec3(-dX * 0.01f, dY * 0.01f, 0.0f));
 	}
 
-	app->setSwapchainDirty();
+	if (mouseRightDown)
+	{
+		scene.camera.pan(glm::vec3(dX, dY, 0.0f) * 0.004f);
+	}
+
+	if (abs(scrollY) > 0.01f)
+	{
+		scene.camera.zoom(-scrollY * 0.1f);
+		scrollY = 0;
+	}
+
+	scene.update(time, swapchain.getSwapchainExtent());
+
+	lastMouseX = xPos;
+	lastMouseY = yPos;
+	lastTime = currentTime;
+}
+
+
+// Window callbacks
+void AppBase::glfwCursorPositionCallback(GLFWwindow* window, double xPos,
+                                         double yPos)
+{
+}
+
+void AppBase::glfwMouseButtonCallback(GLFWwindow* window, const int button,
+                                      const int action, int mods)
+{
+	double xPos, yPos;
+	glfwGetCursorPos(window, &xPos, &yPos);
+
+	if (button == GLFW_MOUSE_BUTTON_LEFT)
+	{
+		switch (action)
+		{
+		case GLFW_PRESS:
+			mouseLeftDown = true;
+			break;
+		case GLFW_RELEASE:
+			mouseLeftDown = false;
+			break;
+		}
+	}
+	else if (button == GLFW_MOUSE_BUTTON_RIGHT)
+	{
+		switch (action)
+		{
+		case GLFW_PRESS:
+			mouseRightDown = true;
+			break;
+		case GLFW_RELEASE:
+			mouseRightDown = false;
+			break;
+		}
+	}
+}
+
+void AppBase::glfwScrollCallback(GLFWwindow* window, const double xOffset,
+                                 const double yOffset)
+{
+	scrollX = xOffset;
+	scrollY = yOffset;
 }

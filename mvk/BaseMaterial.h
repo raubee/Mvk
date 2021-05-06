@@ -18,6 +18,10 @@ namespace mvk
 
 		inline static vk::DescriptorSetLayout descriptorSetLayout;
 
+		void createDescriptorPool();
+		void createDescriptorSets();
+		void updateDescriptorSets();
+
 	public:
 
 		vk::DescriptorPool descriptorPool;
@@ -25,17 +29,12 @@ namespace mvk
 
 		Texture2D* albedo;
 
-		void load(Device device,
+		void load(Device* device,
 		          BaseMaterialDescription description = defaultDescription);
 
-		void release(Device device) override;
+		void release() override;
 
-		void createDescriptorPool(Device device);
-		void createDescriptorSets(Device device);
-		void updateDescriptorSets(Device device);
-
-		static vk::DescriptorSetLayout getDescriptorSetLayout(
-			const Device device)
+		static vk::DescriptorSetLayout getDescriptorSetLayout(Device* device)
 		{
 			if (!descriptorSetLayout)
 				createDescriptorSetLayout(device);
@@ -43,7 +42,7 @@ namespace mvk
 			return descriptorSetLayout;
 		}
 
-		static void createDescriptorSetLayout(const Device device)
+		static void createDescriptorSetLayout(Device* device)
 		{
 			const vk::DescriptorSetLayoutBinding albedoLayoutBinding = {
 				.binding = 0,
@@ -52,25 +51,26 @@ namespace mvk
 				.stageFlags = vk::ShaderStageFlagBits::eFragment
 			};
 
-			std::array<vk::DescriptorSetLayoutBinding, 1> layoutBindings
+			std::vector<vk::DescriptorSetLayoutBinding> layoutBindings
 				= {albedoLayoutBinding};
+
+			const auto bindingCount =
+				static_cast<uint32_t>(layoutBindings.size());
 
 			const vk::DescriptorSetLayoutCreateInfo
 				descriptorSetLayoutCreateInfo = {
-					.bindingCount = static_cast<uint32_t>(layoutBindings.size()
-					),
+					.bindingCount = bindingCount,
 					.pBindings = layoutBindings.data()
 				};
 
-			descriptorSetLayout = vk::Device(device)
-				.createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
+			descriptorSetLayout = device->logicalDevice
+			                            .createDescriptorSetLayout(
+				                            descriptorSetLayoutCreateInfo);
 		}
 
-		vk::DescriptorSet getDescriptorSet(const int index) const
+		vk::DescriptorSet getDescriptorSet() const
 		{
-			if (descriptorSets.size() <= index) return nullptr;
-
-			return descriptorSets[index];
+			return descriptorSets[0];
 		}
 	};
 }

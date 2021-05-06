@@ -5,11 +5,13 @@
 
 using namespace mvk;
 
-void Texture2D::loadFromFile(const Device device,
+void Texture2D::loadFromFile(Device* device,
                              const vk::Queue transferQueue,
                              const char* path,
                              const vk::Format format)
 {
+	this->ptrDevice = device;
+
 	int w, h, c;
 	const auto pixels = stbi_load(path, &w, &h, &c,
 	                              STBI_rgb_alpha);
@@ -23,16 +25,16 @@ void Texture2D::loadFromFile(const Device device,
 	this->width = static_cast<uint32_t>(w);
 	this->height = static_cast<uint32_t>(h);
 	this->format = format;
-	this->image = device.transferImageDataToGpuImage(transferQueue, pixels,
+	this->image = device->transferImageDataToGpuImage(transferQueue, pixels,
 	                                                 width, height, format);
-	createImageView(device);
-	createSampler(device);
+	createImageView();
+	createSampler();
 
 	stbi_image_free(pixels);
 }
 
 
-void Texture2D::createImageView(const Device device)
+void Texture2D::createImageView()
 {
 	const vk::ImageViewCreateInfo imageViewCreateInfo = {
 		.image = image.image,
@@ -48,10 +50,10 @@ void Texture2D::createImageView(const Device device)
 		}
 	};
 
-	imageView = vk::Device(device).createImageView(imageViewCreateInfo);
+	imageView = ptrDevice->logicalDevice.createImageView(imageViewCreateInfo);
 }
 
-void Texture2D::createSampler(const Device device)
+void Texture2D::createSampler()
 {
 	const vk::SamplerCreateInfo samplerCreateInfo = {
 		.magFilter = vk::Filter::eLinear,
@@ -71,12 +73,29 @@ void Texture2D::createSampler(const Device device)
 		.unnormalizedCoordinates = vk::Bool32(false),
 	};
 
-	sampler = vk::Device(device).createSampler(samplerCreateInfo);
+	sampler = ptrDevice->logicalDevice.createSampler(samplerCreateInfo);
 }
 
-void Texture2D::release(const Device device) const
+void Texture2D::loadRaw(Device* device, vk::Queue transferQueue,
+                        std::vector<unsigned char> pixels, const int w,
+                        const int h)
 {
-	vk::Device(device).destroySampler(sampler);
-	vk::Device(device).destroyImageView(imageView);
-	device.destroyImage(image);
+	this->ptrDevice = device;
+
+	this->width = static_cast<uint32_t>(w);
+	this->height = static_cast<uint32_t>(h);
+	this->format = vk::Format::eR8G8B8A8Srgb;
+	this->image = device->transferImageDataToGpuImage(transferQueue,
+	                                                  pixels.data(), width,
+	                                                  height, format);
+
+	createImageView();
+	createSampler();
+}
+
+void Texture2D::release() const
+{
+	ptrDevice->logicalDevice.destroySampler(sampler);
+	ptrDevice->logicalDevice.destroyImageView(imageView);
+	ptrDevice->destroyImage(image);
 }

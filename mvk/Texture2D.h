@@ -6,6 +6,8 @@ namespace mvk
 {
 	class Texture2D
 	{
+		Device* ptrDevice;
+
 		uint32_t width = 0;
 		uint32_t height = 0;
 		vk::Format format = vk::Format::eUndefined;
@@ -13,16 +15,19 @@ namespace mvk
 		vk::ImageView imageView;
 		vk::Sampler sampler;
 
-		void createImageView(Device device);
-		void createSampler(Device device);
+		void createImageView();
+		void createSampler();
 
 	public:
-		void loadFromFile(Device device,
+		void loadRaw(Device* device, vk::Queue transferQueue,
+		             std::vector<unsigned char> pixels, int w, int h);
+
+		void loadFromFile(Device* device,
 		                  vk::Queue transferQueue,
 		                  const char* path,
 		                  vk::Format format);
 
-		void release(Device device) const;
+		void release() const;
 
 		vk::Sampler getSampler() const { return sampler; }
 		vk::ImageView getImageView() const { return imageView; }
@@ -30,5 +35,20 @@ namespace mvk
 		uint32_t getWidth() const { return width; }
 		uint32_t getHeight() const { return height; }
 		vk::Format getFormat() const { return format; }
+
+		inline static Texture2D* sEmpty;
+
+		static Texture2D* empty(Device* device,
+		                        const vk::Queue transferQueue)
+		{
+			if (sEmpty == nullptr)
+			{
+				sEmpty = new Texture2D();
+				const std::vector<unsigned char> pixel{0};
+				sEmpty->loadRaw(device, transferQueue, pixel, 1, 1);
+			}
+
+			return sEmpty;
+		}
 	};
 }

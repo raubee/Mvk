@@ -2,32 +2,41 @@
 
 using namespace mvk;
 
-void BaseMaterial::load(const Device device,
+void BaseMaterial::load(Device* device,
                         const BaseMaterialDescription description)
 
 {
 	albedo = description.albedo;
 
-	Material::load(new Shader(device, "shaders/base.vert.spv",
+	Material::load(device,
+	               new Shader(device, "shaders/base.vert.spv",
 	                          vk::ShaderStageFlagBits::eVertex),
 	               new Shader(device, "shaders/base.frag.spv",
 	                          vk::ShaderStageFlagBits::eFragment));
 
-	createDescriptorSetLayout(device);
-	createDescriptorPool(device);
-	createDescriptorSets(device);
-	updateDescriptorSets(device);
+	if (!descriptorSetLayout)
+		createDescriptorSetLayout(device);
+
+	createDescriptorPool();
+	createDescriptorSets();
+	updateDescriptorSets();
 }
 
-void BaseMaterial::release(const Device device)
+void BaseMaterial::release()
 {
-	vk::Device(device).destroyDescriptorPool(descriptorPool);
-	vk::Device(device).destroyDescriptorSetLayout(descriptorSetLayout);
+	ptrDevice->logicalDevice.destroyDescriptorPool(descriptorPool);
 
-	Material::release(device);
+	// Fix: static destroy
+	if (descriptorSetLayout)
+		ptrDevice->logicalDevice
+		         .destroyDescriptorSetLayout(descriptorSetLayout);
+
+	descriptorSetLayout = nullptr;
+
+	Material::release();
 }
 
-void BaseMaterial::createDescriptorPool(const Device device)
+void BaseMaterial::createDescriptorPool()
 {
 	vk::DescriptorPoolSize descriptorPoolSize{
 		.type = vk::DescriptorType::eCombinedImageSampler,
@@ -40,14 +49,14 @@ void BaseMaterial::createDescriptorPool(const Device device)
 		.pPoolSizes = &descriptorPoolSize
 	};
 
-	descriptorPool =
-		vk::Device(device).createDescriptorPool(descriptorPoolCreateInfo);
+	descriptorPool = ptrDevice->logicalDevice
+	                          .createDescriptorPool(descriptorPoolCreateInfo);
 }
 
-void BaseMaterial::createDescriptorSets(const Device device)
+void BaseMaterial::createDescriptorSets()
 {
 	std::vector<vk::DescriptorSetLayout> descriptorSetLayouts
-	(1, descriptorSetLayout);
+		(1, descriptorSetLayout);
 
 	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo = {
 		.descriptorPool = descriptorPool,
@@ -55,13 +64,14 @@ void BaseMaterial::createDescriptorSets(const Device device)
 		.pSetLayouts = descriptorSetLayouts.data()
 	};
 
-	descriptorSets =
-		vk::Device(device).allocateDescriptorSets(descriptorSetAllocateInfo);
+	descriptorSets = ptrDevice->logicalDevice
+	                          .allocateDescriptorSets(
+		                          descriptorSetAllocateInfo);
 }
 
-void BaseMaterial::updateDescriptorSets(const Device device)
+void BaseMaterial::updateDescriptorSets()
 {
-	for (auto descriptorSet : descriptorSets)
+	for (const auto& descriptorSet : descriptorSets)
 	{
 		vk::DescriptorImageInfo albedoDescriptorImageInfo = {
 			.sampler = albedo->getSampler(),
@@ -78,7 +88,7 @@ void BaseMaterial::updateDescriptorSets(const Device device)
 			.pImageInfo = &albedoDescriptorImageInfo
 		};
 
-		vk::Device(device)
-			.updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+		ptrDevice->logicalDevice
+		         .updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
 	}
 }

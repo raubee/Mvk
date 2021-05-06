@@ -1,6 +1,8 @@
 #include "AppBase.h"
+#include "Model.h"
 #include "BaseMaterial.h"
 #include "NormalMaterial.h"
+#include "GraphicPipeline.h"
 
 class MultiViewer : public mvk::AppBase
 {
@@ -31,33 +33,33 @@ class MultiViewer : public mvk::AppBase
 	}
 	pipelines;
 
-
 	void loadGanesh()
 	{
 		const auto modelPath = "assets/models/ganesha/ganesha.obj";
 
-		models.ganesh.loadFromFile(device, transferQueue, modelPath);
+		models.ganesh.loadFromFile(&device, transferQueue, modelPath);
 
 		const auto albedoPath =
 			"assets/models/ganesha/textures/Ganesha_BaseColor.jpg";
 
-		textures.albedo.loadFromFile(device, transferQueue, albedoPath,
+		textures.albedo.loadFromFile(&device, transferQueue, albedoPath,
 		                             vk::Format::eR8G8B8A8Srgb);
 
 		mvk::BaseMaterialDescription description;
 		description.albedo = &textures.albedo;
 
-		materials.standard.load(device, description);
+		materials.standard.load(&device, description);
 
-		std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts = {
-			mvk::Scene::getDescriptorSetLayout(device),
-			mvk::BaseMaterial::getDescriptorSetLayout(device)
+		std::array<vk::DescriptorSetLayout, 3> descriptorSetLayouts = {
+			mvk::Scene::getDescriptorSetLayout(&device),
+			mvk::Model::getDescriptorSetLayout(&device),
+			mvk::BaseMaterial::getDescriptorSetLayout(&device)
 		};
 
 		const auto descriptorCount =
 			static_cast<int32_t>(descriptorSetLayouts.size());
 
-		pipelines.standard.build(device,
+		pipelines.standard.build(&device,
 		                         swapchain.getSwapchainExtent(),
 		                         renderPass.getRenderPass(),
 		                         materials
@@ -68,7 +70,7 @@ class MultiViewer : public mvk::AppBase
 
 	void loadPlane()
 	{
-		auto vertices = std::vector<mvk::Vertex>({
+		const auto vertices = std::vector<mvk::Vertex>({
 			{
 				{-0.5f, 0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
 				{0.0f, 0.0f}
@@ -104,44 +106,24 @@ class MultiViewer : public mvk::AppBase
 			}
 		});
 
-		auto indices = std::vector<uint16_t>({
+		const auto indices = std::vector<uint32_t>({
 			0, 1, 2, 2, 3, 0,
 			4, 5, 6, 6, 7, 4
 		});
 
-		models.plane.verticesCount = static_cast<uint32_t>(vertices.size());
-		models.plane.indicesCount = static_cast<uint32_t>(indices.size());
+		models.plane.loadRaw(&device, transferQueue, vertices, indices);
 
-		const auto vSize =
-			static_cast<vk::DeviceSize>(sizeof vertices.at(0) *
-				models.plane.verticesCount);
+		materials.normal.load(&device);
 
-		models.plane.vertexBuffer =
-			device.transferDataSetToGpuBuffer(transferQueue, vertices.data(),
-			                                  vSize,
-			                                  vk::BufferUsageFlagBits::
-			                                  eVertexBuffer);
-
-		const auto iSize =
-			static_cast<vk::DeviceSize>(sizeof indices.at(0) *
-				models.plane.indicesCount);
-
-		models.plane.indexBuffer =
-			device.transferDataSetToGpuBuffer(transferQueue, indices.data(),
-			                                  iSize,
-			                                  vk::BufferUsageFlagBits::
-			                                  eIndexBuffer);
-
-		materials.normal.load(device);
-
-		std::array<vk::DescriptorSetLayout, 1> descriptorSetLayouts = {
-			mvk::Scene::getDescriptorSetLayout(device)
+		std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts = {
+			mvk::Scene::getDescriptorSetLayout(&device),
+			mvk::Model::getDescriptorSetLayout(&device)
 		};
 
 		const auto descriptorCount =
 			static_cast<int32_t>(descriptorSetLayouts.size());
 
-		pipelines.normal.build(device,
+		pipelines.normal.build(&device,
 		                       swapchain.getSwapchainExtent(),
 		                       renderPass.getRenderPass(),
 		                       materials.normal.
@@ -156,19 +138,26 @@ public:
 		.appName = "MultiViewer"
 	})
 	{
+		scene.camera.setPerspective(45.0f, float(width) / float(height),
+		                            0.1f, 100.0f);
+
+		scene.camera.setType(Camera::CameraType::ORBIT);
+		scene.camera.setLookAt(glm::vec3(0.0f, 0.5f, 0.0f));
+		scene.camera.setDistance(2.0f);
+
 		loadGanesh();
 		loadPlane();
 	}
 
 	~MultiViewer()
 	{
-		textures.albedo.release(device);
-		models.ganesh.release(device);
-		models.plane.release(device);
-		materials.standard.release(device);
-		materials.normal.release(device);
-		pipelines.standard.release(device);
-		pipelines.normal.release(device);
+		textures.albedo.release();
+		models.ganesh.release();
+		models.plane.release();
+		materials.standard.release();
+		materials.normal.release();
+		pipelines.standard.release();
+		pipelines.normal.release();
 	}
 
 	void buildCommandBuffer(const vk::CommandBuffer commandBuffer,
@@ -198,6 +187,24 @@ public:
 		commandBuffer.beginRenderPass(renderPassBeginInfo,
 		                              vk::SubpassContents::eInline);
 
+		vk::Viewport viewport = {
+			.x = 0.0f,
+			.y = 0.0f,
+			.width = static_cast<float>(extent.width),
+			.height = static_cast<float>(extent.height),
+			.minDepth = 0.0f,
+			.maxDepth = 1.0f
+		};
+
+		commandBuffer.setViewport(0, viewport);
+
+		vk::Rect2D scissor = {
+			.offset = {0, 0},
+			.extent = extent
+		};
+
+		commandBuffer.setScissor(0, scissor);
+
 		drawGanesh(commandBuffer);
 		drawPlane(commandBuffer);
 
@@ -208,108 +215,80 @@ public:
 	void drawGanesh(const vk::CommandBuffer commandBuffer)
 	{
 		const auto graphicPipeline = pipelines.standard;
-		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
 		const auto pipeline = graphicPipeline.getPipeline();
-		const auto extent = swapchain.getSwapchainExtent();
-
-		std::vector<vk::DescriptorSet> descriptorSets = {
-			scene.getDescriptorSet(0),
-			materials.standard.getDescriptorSet(0)
-		};
+		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
 
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
 		                           pipeline);
 
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-		                                 pipelineLayout, 0,
-		                                 static_cast<uint32_t>(
-			                                 descriptorSets.size()),
-		                                 descriptorSets.data(), 0, nullptr);
+		for (const auto& node : models.ganesh.nodes)
+		{
+			std::vector<vk::DescriptorSet> descriptorSets = {
+				scene.getDescriptorSet(0),
+				node->getDescriptorSet(),
+				materials.standard.getDescriptorSet()
+			};
 
-		vk::Viewport viewport = {
-			.x = 0.0f,
-			.y = 0.0f,
-			.width = static_cast<float>(extent.width),
-			.height = static_cast<float>(extent.height),
-			.minDepth = 0.0f,
-			.maxDepth = 1.0f
-		};
+			const auto descriptorCount =
+				static_cast<uint32_t>(descriptorSets.size());
 
-		commandBuffer.setViewport(0, viewport);
+			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+			                                 pipelineLayout, 0, descriptorCount,
+			                                 descriptorSets.data(), 0, nullptr);
 
-		vk::Rect2D scissor = {
-			.offset = {0, 0},
-			.extent = extent
-		};
+			const auto vertexBuffer = models.ganesh.vertexBuffer;
+			const auto indexBuffer = models.ganesh.indexBuffer;
 
-		commandBuffer.setScissor(0, scissor);
+			vk::DeviceSize offsets[] = {0};
 
-		const auto vertexBuffer = models.ganesh.vertexBuffer;
-		const auto indexBuffer = models.ganesh.indexBuffer;
+			commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer.buffer,
+			                                offsets);
 
-		vk::DeviceSize offsets[] = {0};
+			commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
+			                              vk::IndexType::eUint32);
 
-		commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer.buffer, offsets);
-
-		const auto size = models.ganesh.indicesCount;
-
-		commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
-		                              vk::IndexType::eUint16);
-
-		commandBuffer.drawIndexed(size, 1, 0, 0, 0);
+			commandBuffer.drawIndexed(node->indexCount, 1,
+			                          node->startIndex, 0, 0);
+		}
 	}
 
 	void drawPlane(const vk::CommandBuffer commandBuffer)
 	{
 		const auto graphicPipeline = pipelines.normal;
-		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
 		const auto pipeline = graphicPipeline.getPipeline();
-		const auto extent = swapchain.getSwapchainExtent();
-
-		std::vector<vk::DescriptorSet> descriptorSets = {
-			scene.getDescriptorSet(0)
-		};
+		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
 
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
 		                           pipeline);
 
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-		                                 pipelineLayout, 0,
-		                                 static_cast<uint32_t>(
-			                                 descriptorSets.size()),
-		                                 descriptorSets.data(), 0, nullptr);
+		for (const auto& node : models.plane.nodes)
+		{
+			std::vector<vk::DescriptorSet> descriptorSets = {
+				scene.getDescriptorSet(0),
+				node->getDescriptorSet()
+			};
 
-		vk::Viewport viewport = {
-			.x = 0.0f,
-			.y = 0.0f,
-			.width = static_cast<float>(extent.width),
-			.height = static_cast<float>(extent.height),
-			.minDepth = 0.0f,
-			.maxDepth = 1.0f
-		};
+			const auto descriptorCount = static_cast<uint32_t>(
+				descriptorSets.size());
 
-		commandBuffer.setViewport(0, viewport);
+			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+			                                 pipelineLayout, 0, descriptorCount,
+			                                 descriptorSets.data(), 0, nullptr);
 
-		vk::Rect2D scissor = {
-			.offset = {0, 0},
-			.extent = extent
-		};
+			const auto vertexBuffer = models.plane.vertexBuffer;
+			const auto indexBuffer = models.plane.indexBuffer;
 
-		commandBuffer.setScissor(0, scissor);
+			vk::DeviceSize offsets[] = {0};
 
-		const auto vertexBuffer = models.plane.vertexBuffer;
-		const auto indexBuffer = models.plane.indexBuffer;
+			commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer.buffer,
+			                                offsets);
 
-		vk::DeviceSize offsets[] = {0};
+			commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
+			                              vk::IndexType::eUint32);
 
-		commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer.buffer, offsets);
-
-		const auto size = models.plane.indicesCount;
-
-		commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
-		                              vk::IndexType::eUint16);
-
-		commandBuffer.drawIndexed(size, 1, 0, 0, 0);
+			commandBuffer.drawIndexed(node->indexCount, 1,
+			                          node->startIndex, 0, 0);
+		}
 	}
 };
 

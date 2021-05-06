@@ -7,29 +7,28 @@ namespace mvk
 {
 	class SwapchainFrame
 	{
+		Device* ptrDevice;
+
 		vk::ImageView imageView;
 		vk::Framebuffer framebuffer;
 		vk::CommandBuffer commandBuffer;
 
-		void createImageView(Device device,
-		                     vk::Image image,
-		                     vk::Format format);
+		void createImageView(vk::Image image, vk::Format format);
 
-		void createFramebuffer(Device device,
-		                       vk::ImageView depthImageView,
+		void createFramebuffer(vk::ImageView depthImageView,
 		                       vk::RenderPass renderPass,
 		                       vk::Extent2D extent);
 
 	public:
 
-		void create(Device device,
+		void create(Device* device,
 		            vk::Image image,
 		            vk::RenderPass renderPass,
 		            vk::Format swapchainFormat,
 		            vk::Extent2D swapchainExtent,
 		            vk::ImageView depthImage);
 
-		void release(Device device) const;
+		void release() const;
 
 		vk::ImageView getImageView() const { return imageView; }
 		vk::Framebuffer getFramebuffer() const { return framebuffer; }

@@ -3,15 +3,17 @@
 
 using namespace mvk;
 
-void GraphicPipeline::build(vk::Device device,
+void GraphicPipeline::build(Device* device,
                             vk::Extent2D extent,
                             vk::RenderPass renderPass,
                             std::vector<vk::PipelineShaderStageCreateInfo>
                             shaderStageCreateInfos,
                             vk::DescriptorSetLayout* descriptorSetLayouts,
                             uint32_t descriptorLayoutsSize,
-							vk::FrontFace frontFace)
+                            vk::FrontFace frontFace)
 {
+	this->ptrDevice = device;
+
 	/** Vertex Input State settings **/
 	auto bindingDescription = Vertex::getBindingDescription();
 	auto attributeDescriptions = Vertex::getAttributeDescriptions();
@@ -121,7 +123,8 @@ void GraphicPipeline::build(vk::Device device,
 		.pSetLayouts = descriptorSetLayouts
 	};
 
-	pipelineLayout = device.createPipelineLayout(pipelineLayoutCreateInfo);
+	pipelineLayout =
+		device->logicalDevice.createPipelineLayout(pipelineLayoutCreateInfo);
 
 	const vk::PipelineCache pipelineCache;
 	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {
@@ -142,8 +145,9 @@ void GraphicPipeline::build(vk::Device device,
 	};
 
 	vk::Result result;
-	std::tie(result, pipeline) = device.createGraphicsPipeline(
-		pipelineCache, graphicsPipelineCreateInfo);
+	std::tie(result, pipeline) =
+		device->logicalDevice.createGraphicsPipeline(pipelineCache,
+		                                             graphicsPipelineCreateInfo);
 
 	switch (result)
 	{
@@ -155,14 +159,9 @@ void GraphicPipeline::build(vk::Device device,
 	}
 }
 
-void GraphicPipeline::release(const vk::Device device)
+void GraphicPipeline::release() const
 {
-	if (descriptorSetLayout)
-		device.destroy(descriptorSetLayout);
-
-	if (pipelineLayout)
-		device.destroyPipelineLayout(pipelineLayout);
-
-	if (pipeline)
-		device.destroyPipeline(pipeline);
+	ptrDevice->logicalDevice.destroy(descriptorSetLayout);
+	ptrDevice->logicalDevice.destroyPipelineLayout(pipelineLayout);
+	ptrDevice->logicalDevice.destroyPipeline(pipeline);
 }

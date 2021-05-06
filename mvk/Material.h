@@ -11,18 +11,21 @@ namespace mvk
 	{
 	protected:
 
+		Device* ptrDevice;
+
 		Shader* vertShader;
 		Shader* fragShader;
 		Shader* geoShader;
 		Shader* tesShader;
-	
+
 	public:
-		virtual void load(Shader* vertShader,
+		virtual void load(Device* device,
+		                  Shader* vertShader,
 		                  Shader* fragShader,
 		                  Shader* geoShader = nullptr,
 		                  Shader* tesShader = nullptr);
 
-		virtual void release(Device device);
+		virtual void release();
 
 		std::vector<vk::PipelineShaderStageCreateInfo>
 		getPipelineShaderStageCreateInfo() const;

@@ -59,9 +59,6 @@
     <ClInclude Include="mvk\Texture2D.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
-    <ClInclude Include="mvk\UniformBufferObject.h">
-      <Filter>Fichiers d%27en-tête</Filter>
-    </ClInclude>
     <ClInclude Include="mvk\Vertex.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
@@ -78,6 +75,9 @@
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
     <ClInclude Include="mvk\Device.hpp">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="mvk\Camera.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
   </ItemGroup>
@@ -119,6 +119,9 @@
       <Filter>Fichiers sources</Filter>
     </ClCompile>
     <ClCompile Include="mvk\Model.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="mvk\Camera.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
   </ItemGroup>

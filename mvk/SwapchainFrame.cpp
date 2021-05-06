@@ -1,31 +1,27 @@
 #include "SwapchainFrame.h"
-#include "UniformBufferObject.h"
 
 using namespace mvk;
 
-void SwapchainFrame::create(const Device device,
+void SwapchainFrame::create(Device* device,
                             const vk::Image image,
                             const vk::RenderPass renderPass,
                             const vk::Format swapchainFormat,
                             const vk::Extent2D swapchainExtent,
                             const vk::ImageView depthImage)
 {
-	createImageView(device, image, swapchainFormat);
-	createFramebuffer(device, depthImage, renderPass, swapchainExtent);
+	this->ptrDevice = device;
+
+	createImageView(image, swapchainFormat);
+	createFramebuffer(depthImage, renderPass, swapchainExtent);
 }
 
-void SwapchainFrame::release(const Device device) const
+void SwapchainFrame::release() const
 {
-	if (framebuffer)
-		vk::Device(device).destroy(framebuffer);
-
-	if (imageView)
-		vk::Device(device).destroy(imageView);
+	ptrDevice->logicalDevice.destroy(framebuffer);
+	ptrDevice->logicalDevice.destroy(imageView);
 }
 
-void SwapchainFrame::createImageView(const Device device,
-                                     vk::Image image,
-                                     vk::Format format)
+void SwapchainFrame::createImageView(vk::Image image, vk::Format format)
 {
 	const auto imageViewCreateInfo = vk::ImageViewCreateInfo{
 		.image = image,
@@ -46,11 +42,10 @@ void SwapchainFrame::createImageView(const Device device,
 		}
 	};
 
-	imageView = vk::Device(device).createImageView(imageViewCreateInfo);
+	imageView = ptrDevice->logicalDevice.createImageView(imageViewCreateInfo);
 }
 
-void SwapchainFrame::createFramebuffer(const Device device,
-                                       const vk::ImageView depthImageView,
+void SwapchainFrame::createFramebuffer(const vk::ImageView depthImageView,
                                        const vk::RenderPass renderPass,
                                        const vk::Extent2D extent)
 {
@@ -65,5 +60,6 @@ void SwapchainFrame::createFramebuffer(const Device device,
 		.layers = 1
 	};
 
-	framebuffer = vk::Device(device).createFramebuffer(framebufferCreateInfo);
+	framebuffer =
+		ptrDevice->logicalDevice.createFramebuffer(framebufferCreateInfo);
 }

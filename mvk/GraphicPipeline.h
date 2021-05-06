@@ -1,17 +1,20 @@
 #pragma once
-#include "VulkanVma.h"
+
+#include "Device.hpp"
 
 namespace mvk
 {
 	class GraphicPipeline
 	{
+		Device* ptrDevice;
+
 		vk::Pipeline pipeline;
 		vk::PipelineLayout pipelineLayout;
 		vk::DescriptorSetLayout descriptorSetLayout;
 
 	public:
 		
-		void build(vk::Device device,
+		void build(Device* device,
 			vk::Extent2D extent,
 			vk::RenderPass renderPass,
 			std::vector<vk::PipelineShaderStageCreateInfo>
@@ -20,7 +23,7 @@ namespace mvk
 			uint32_t descriptorLayoutsSize,
 			vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise);
 		
-		void release(vk::Device device);
+		void release() const;
 
 		vk::DescriptorSetLayout getDescriptorSetLayout() const
 		{

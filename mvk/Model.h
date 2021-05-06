@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Vertex.h"
-#include "Material.h"
+#include "BaseMaterial.h"
 #include "GraphicPipeline.h"
 
 #include <glm/glm.hpp>
@@ -16,74 +16,105 @@
 
 namespace mvk
 {
-	struct Node;
-
-	class Mesh
+	struct NodeUBO
 	{
-		struct UniformBuffer
-		{
-			glm::mat4 modelMatrix;
-		}
-		uniformBuffer;
-
-		std::vector<Material> materials;
+		glm::mat4 matrix;
 	};
 
 	struct Node
 	{
-		const uint32_t id;
-		Node* parent = nullptr;
 		const char* name;
+
+		int id;
+		int matId;
+		bool hasIndices;
+		bool hasMesh;
+
+		Node* parent = nullptr;
 		std::vector<Node*> childNodes;
 
-		Mesh* mesh;
+		uint32_t startVertex;
+		uint32_t startIndex;
+
+		uint32_t indexCount;
+		uint32_t vertexCount;
+
+		glm::mat4 matrix = glm::mat4(1);
+		glm::vec3 translation = glm::vec3(0);
+		glm::mat4 rotation = glm::mat4(1);
+		glm::vec3 scale = glm::vec3(1);
+
+		alloc::Buffer matrixBuffer;
+
+		std::vector<vk::DescriptorSet> descriptorSets;
+
+		void release(Device* device) const;
+
+		void createLocalMatrixBuffer(Device* device);
+		void writeDescriptorSets(Device* device);
+		void updateLocalMatrixObject(Device* device) const;
+
+		vk::DescriptorSet getDescriptorSet()
+		{
+			return descriptorSets[0];
+		}
+
+		glm::mat4 getLocalMatrix() const;
+		glm::mat4 getMatrix() const;
 	};
 
 	class Model
 	{
-		std::vector<Node*> nodes;
-
-		std::vector<Material> materials;
-		std::vector<Mesh> meshes;
+		Device* ptrDevice;
 
 		alloc::Buffer modelMatrixBuffer;
 		vk::DescriptorPool descriptorPool;
-		std::vector<vk::DescriptorSet> descriptorSets;
+
 		inline static vk::DescriptorSetLayout descriptorSetLayout;
 
-		void setup(Device device);
-		void createModelMatrix(Device device);
-		void createDescriptorPool(Device device);
-		void createDescriptorSets(Device device);
+		void setupDescriptors();
+		void createDescriptorPool();
+		void createDescriptorSets();
 
-		void loadFromGltfFile(const char* filePath,
+		void loadTextures(vk::Queue transferQueue, tinygltf::Model model);
+
+		void loadMaterials(tinygltf::Model model);
+
+		void loadGltfNode(Node* parent, tinygltf::Node node, int nodeId,
+		                  tinygltf::Model model,
+		                  std::vector<Vertex>& vertices,
+		                  std::vector<uint32_t>& indices);
+
+		void loadFromGltfFile(vk::Queue transferQueue,
+		                      const char* filePath,
 		                      std::vector<Vertex>& vertices,
-		                      std::vector<uint16_t>& indices);
-		void loadNode(Node* parent, tinygltf::Node node, uint32_t nodeId,
-		              tinygltf::Model model,
-		              std::vector<Vertex>& vertices,
-		              std::vector<uint16_t>& indices);
+		                      std::vector<uint32_t>& indices);
 
 		void loadFromObjFile(const char* filePath,
 		                     std::vector<Vertex>& vertices,
-		                     std::vector<uint16_t>& indices);
+		                     std::vector<uint32_t>& indices);
 
 	public:
+
+		std::string folder;
+
+		std::vector<Texture2D*> textures;
+		std::vector<Material*> materials;
+		std::vector<Node*> nodes;
 
 		alloc::Buffer vertexBuffer;
 		alloc::Buffer indexBuffer;
 
-		uint32_t verticesCount;
-		uint32_t indicesCount;
+		void loadRaw(Device* device, vk::Queue transferQueue,
+		             std::vector<Vertex> vertices,
+		             std::vector<uint32_t> indices);
 
-
-		void loadFromFile(Device device, vk::Queue transferQueue,
+		void loadFromFile(Device* device, vk::Queue transferQueue,
 		                  const char* filePath);
 
-		void release(Device device) const;
+		void release() const;
 
-		static vk::DescriptorSetLayout getDescriptorSetLayout(
-			const Device device)
+		static vk::DescriptorSetLayout getDescriptorSetLayout(Device* device)
 		{
 			if (!descriptorSetLayout)
 			{
@@ -93,7 +124,7 @@ namespace mvk
 			return descriptorSetLayout;
 		}
 
-		static void createDescriptorSetLayout(const Device device)
+		static void createDescriptorSetLayout(Device* device)
 		{
 			const vk::DescriptorSetLayoutBinding uniformBufferLayoutBinding = {
 				.binding = 0,
@@ -112,8 +143,9 @@ namespace mvk
 					.pBindings = layoutBindings.data()
 				};
 
-			descriptorSetLayout = vk::Device(device).createDescriptorSetLayout(
-				descriptorSetLayoutCreateInfo);
+			descriptorSetLayout = device->logicalDevice
+			                            .createDescriptorSetLayout(
+				                            descriptorSetLayoutCreateInfo);
 		}
 	};
 }

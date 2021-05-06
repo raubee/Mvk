@@ -1,6 +1,8 @@
 #include "AppBase.h"
+#include "Model.h"
 #include "Texture2D.h"
 #include "BaseMaterial.h"
+#include "GraphicPipeline.h"
 
 class ObjViewer : public mvk::AppBase
 {
@@ -33,30 +35,40 @@ public:
 		.appName = "ObjViewer"
 	})
 	{
+		scene.camera.setPerspective(45.0f, float(width) / float(height),
+		                            0.1f, 100.0f);
+
+		/*scene.camera.setType(Camera::CameraType::FLY);
+		scene.camera.setPosition(glm::vec3(0.0f, 0.0f, -2.0f));*/
+		scene.camera.setType(Camera::CameraType::ORBIT);
+		scene.camera.setLookAt(glm::vec3(0.0f, 0.5f, 0.0f));
+		scene.camera.setDistance(1.5f);
+
 		const auto modelPath = "assets/models/ganesha/ganesha.obj";
 
-		models.ganesh.loadFromFile(device, transferQueue, modelPath);
+		models.ganesh.loadFromFile(&device, transferQueue, modelPath);
 
 		const auto albedoPath =
 			"assets/models/ganesha/textures/Ganesha_BaseColor.jpg";
 
-		textures.albedo.loadFromFile(device, transferQueue, albedoPath,
+		textures.albedo.loadFromFile(&device, transferQueue, albedoPath,
 		                             vk::Format::eR8G8B8A8Srgb);
 
 		mvk::BaseMaterialDescription description;
 		description.albedo = &textures.albedo;
 
-		materials.standard.load(device, description);
+		materials.standard.load(&device, description);
 
-		std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts = {
-			mvk::Scene::getDescriptorSetLayout(device),
-			mvk::BaseMaterial::getDescriptorSetLayout(device)
+		std::array<vk::DescriptorSetLayout, 3> descriptorSetLayouts = {
+			mvk::Scene::getDescriptorSetLayout(&device),
+			mvk::Model::getDescriptorSetLayout(&device),
+			mvk::BaseMaterial::getDescriptorSetLayout(&device)
 		};
 
 		const auto descriptorCount =
 			static_cast<int32_t>(descriptorSetLayouts.size());
 
-		pipelines.standard.build(device,
+		pipelines.standard.build(&device,
 		                         swapchain.getSwapchainExtent(),
 		                         renderPass.getRenderPass(),
 		                         materials
@@ -67,10 +79,10 @@ public:
 
 	~ObjViewer()
 	{
-		textures.albedo.release(device);
-		models.ganesh.release(device);
-		materials.standard.release(device);
-		pipelines.standard.release(device);
+		textures.albedo.release();
+		models.ganesh.release();
+		materials.standard.release();
+		pipelines.standard.release();
 	}
 
 	void buildCommandBuffer(const vk::CommandBuffer commandBuffer,
@@ -104,52 +116,58 @@ public:
 		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
 		const auto pipeline = graphicPipeline.getPipeline();
 
-		std::vector<vk::DescriptorSet> descriptorSets = {
-			scene.getDescriptorSet(0),
-			materials.standard.getDescriptorSet(0)
-		};
+		for (const auto& node : models.ganesh.nodes)
+		{
+			std::vector<vk::DescriptorSet> descriptorSets = {
+				scene.getDescriptorSet(0),
+				node->getDescriptorSet(),
+				materials.standard.getDescriptorSet()
+			};
 
-		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-		                           pipeline);
+			commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+			                           pipeline);
 
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-		                                 pipelineLayout, 0,
-		                                 static_cast<uint32_t>(
-			                                 descriptorSets.size()),
-		                                 descriptorSets.data(), 0, nullptr);
+			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+			                                 pipelineLayout, 0,
+			                                 static_cast<uint32_t>(
+				                                 descriptorSets.size()),
+			                                 descriptorSets.data(), 0, nullptr);
 
-		vk::Viewport viewport = {
-			.x = 0.0f,
-			.y = 0.0f,
-			.width = static_cast<float>(extent.width),
-			.height = static_cast<float>(extent.height),
-			.minDepth = 0.0f,
-			.maxDepth = 1.0f
-		};
+			vk::Viewport viewport = {
+				.x = 0.0f,
+				.y = 0.0f,
+				.width = static_cast<float>(extent.width),
+				.height = static_cast<float>(extent.height),
+				.minDepth = 0.0f,
+				.maxDepth = 1.0f
+			};
 
-		commandBuffer.setViewport(0, viewport);
+			commandBuffer.setViewport(0, viewport);
 
-		vk::Rect2D scissor = {
-			.offset = {0, 0},
-			.extent = extent
-		};
+			vk::Rect2D scissor = {
+				.offset = {0, 0},
+				.extent = extent
+			};
 
-		commandBuffer.setScissor(0, scissor);
+			commandBuffer.setScissor(0, scissor);
 
-		const auto vertexBuffer = models.ganesh.vertexBuffer;
-		const auto indexBuffer = models.ganesh.indexBuffer;
+			const auto vertexBuffer = models.ganesh.vertexBuffer;
+			const auto indexBuffer = models.ganesh.indexBuffer;
 
-		vk::DeviceSize offsets[] = {0};
+			vk::DeviceSize offsets[] = {0};
 
-		commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer.buffer, offsets);
+			commandBuffer.
+				bindVertexBuffers(0, 1, &vertexBuffer.buffer, offsets);
 
-		const auto size = models.ganesh.indicesCount;
+			commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
+			                              vk::IndexType::eUint32);
 
-		commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
-		                              vk::IndexType::eUint16);
 
-		commandBuffer.drawIndexed(size, 1, 0, 0, 0);
+			const auto size = node->indexCount;
+			const auto indexStart = node->startIndex;
 
+			commandBuffer.drawIndexed(size, 1, indexStart, 0, 0);
+		}
 
 		commandBuffer.endRenderPass();
 		commandBuffer.end();

@@ -1,5 +1,7 @@
 #include "AppBase.h"
+#include "Model.h"
 #include "BaseMaterial.h"
+#include "GraphicPipeline.h"
 
 class SimpleViewer : public mvk::AppBase
 {
@@ -33,7 +35,14 @@ public:
 			.appName = "SimpleViewer"
 		})
 	{
-		auto vertices = std::vector<mvk::Vertex>({
+		scene.camera.setPerspective(45.0f, float(width) / float(height),
+		                            0.1f, 100.0f);
+
+		scene.camera.setType(Camera::CameraType::ORBIT);
+		scene.camera.setLookAt(glm::vec3(0.0f, 0.5f, 0.0f));
+		scene.camera.setDistance(1.5f);
+
+		const auto vertices = std::vector<mvk::Vertex>({
 			{
 				{-0.5f, 0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
 				{0.0f, 0.0f}
@@ -69,53 +78,33 @@ public:
 			}
 		});
 
-		auto indices = std::vector<uint16_t>({
+		const auto indices = std::vector<uint32_t>({
 			0, 1, 2, 2, 3, 0,
 			4, 5, 6, 6, 7, 4
 		});
 
-		models.plane.verticesCount = static_cast<uint32_t>(vertices.size());
-		models.plane.indicesCount = static_cast<uint32_t>(indices.size());
-
-		const auto vSize =
-			static_cast<vk::DeviceSize>(sizeof vertices.at(0) *
-				models.plane.verticesCount);
-
-		models.plane.vertexBuffer =
-			device.transferDataSetToGpuBuffer(transferQueue,
-			                                  vertices.data(), vSize,
-			                                  vk::BufferUsageFlagBits::
-			                                  eVertexBuffer);
-
-		const auto iSize =
-			static_cast<vk::DeviceSize>(sizeof indices.at(0) *
-				models.plane.indicesCount);
-
-		models.plane.indexBuffer =
-			device.transferDataSetToGpuBuffer(transferQueue, indices.data(),
-			                                  iSize,
-			                                  vk::BufferUsageFlagBits::
-			                                  eIndexBuffer);
+		models.plane.loadRaw(&device, transferQueue, vertices, indices);
 
 		const auto path = "assets/textures/lena.jpg";
 
-		textures.lena.loadFromFile(device, transferQueue, path,
+		textures.lena.loadFromFile(&device, transferQueue, path,
 		                           vk::Format::eR8G8B8A8Srgb);
 
 		mvk::BaseMaterialDescription description;
 		description.albedo = &textures.lena;
 
-		materials.standard.load(device, description);
+		materials.standard.load(&device, description);
 
-		std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts = {
-			mvk::Scene::getDescriptorSetLayout(device),
-			mvk::BaseMaterial::getDescriptorSetLayout(device)
+		std::array<vk::DescriptorSetLayout, 3> descriptorSetLayouts = {
+			mvk::Scene::getDescriptorSetLayout(&device),
+			mvk::Model::getDescriptorSetLayout(&device),
+			mvk::BaseMaterial::getDescriptorSetLayout(&device)
 		};
 
 		const auto descriptorCount =
 			static_cast<uint32_t>(descriptorSetLayouts.size());
 
-		pipelines.standard.build(device,
+		pipelines.standard.build(&device,
 		                         swapchain.getSwapchainExtent(),
 		                         renderPass.getRenderPass(),
 		                         materials.standard.
@@ -127,10 +116,10 @@ public:
 
 	~SimpleViewer()
 	{
-		textures.lena.release(device);
-		models.plane.release(device);
-		materials.standard.release(device);
-		pipelines.standard.release(device);
+		textures.lena.release();
+		models.plane.release();
+		materials.standard.release();
+		pipelines.standard.release();
 	}
 
 	void buildCommandBuffer(const vk::CommandBuffer commandBuffer,
@@ -164,55 +153,58 @@ public:
 		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
 		const auto pipeline = graphicPipeline.getPipeline();
 
-		std::vector<vk::DescriptorSet> descriptorSets = {
-			scene.getDescriptorSet(0),
-			materials.standard.getDescriptorSet(0)
-		};
-
 		commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
 		                           pipeline);
 
-		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-		                                 pipelineLayout, 0,
-		                                 static_cast<uint32_t>(
-			                                 descriptorSets.size()),
-		                                 descriptorSets.data(), 0, nullptr);
+		for (const auto& node : models.plane.nodes)
+		{
+			std::vector<vk::DescriptorSet> descriptorSets = {
+				scene.getDescriptorSet(0),
+				node->getDescriptorSet(),
+				materials.standard.getDescriptorSet()
+			};
 
-		vk::Viewport viewport = {
-			.x = 0.0f,
-			.y = 0.0f,
-			.width = static_cast<float>(extent.width),
-			.height = static_cast<float>(extent.height),
-			.minDepth = 0.0f,
-			.maxDepth = 1.0f
-		};
+			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+			                                 pipelineLayout, 0,
+			                                 static_cast<uint32_t>(
+				                                 descriptorSets.size()),
+			                                 descriptorSets.data(), 0, nullptr);
 
-		commandBuffer.setViewport(0, viewport);
+			vk::Viewport viewport = {
+				.x = 0.0f,
+				.y = 0.0f,
+				.width = static_cast<float>(extent.width),
+				.height = static_cast<float>(extent.height),
+				.minDepth = 0.0f,
+				.maxDepth = 1.0f
+			};
 
-		vk::Rect2D scissor = {
-			.offset = {0, 0},
-			.extent = extent
-		};
+			commandBuffer.setViewport(0, viewport);
 
-		commandBuffer.setScissor(0, scissor);
+			vk::Rect2D scissor = {
+				.offset = {0, 0},
+				.extent = extent
+			};
 
-		const auto vertexBuffer = models.plane.vertexBuffer;
-		const auto indexBuffer = models.plane.indexBuffer;
+			commandBuffer.setScissor(0, scissor);
 
-		vk::DeviceSize offsets[] = {0};
+			const auto vertexBuffer = models.plane.vertexBuffer;
+			const auto indexBuffer = models.plane.indexBuffer;
 
-		commandBuffer.bindVertexBuffers(0, 1,
-		                                &vertexBuffer.buffer,
-		                                offsets);
+			vk::DeviceSize offsets[] = {0};
+
+			commandBuffer.bindVertexBuffers(0, 1,
+			                                &vertexBuffer.buffer,
+			                                offsets);
 
 
-		const auto size = models.plane.indicesCount;
+			commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
+			                              vk::IndexType::eUint32);
 
-		commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
-		                              vk::IndexType::eUint16);
 
-		commandBuffer.drawIndexed(size, 1, 0, 0, 0);
-
+			const auto size = node->indexCount;
+			commandBuffer.drawIndexed(size, 1, 0, 0, 0);
+		}
 
 		commandBuffer.endRenderPass();
 		commandBuffer.end();

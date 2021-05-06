@@ -23,9 +23,10 @@ static std::vector<char> readFile(const std::string& filename)
 	return buffer;
 }
 
-Shader::Shader(const Device device, const std::string& filename,
+Shader::Shader(Device* device, const std::string& filename,
                const vk::ShaderStageFlagBits stageFlagBits)
 {
+	this->device = device;
 	this->filename = filename;
 	this->stageFlagBits = stageFlagBits;
 
@@ -37,7 +38,7 @@ Shader::Shader(const Device device, const std::string& filename,
 	};
 
 	shaderModule =
-		vk::Device(device).createShaderModule(shaderModuleCreateInfo);
+		device->logicalDevice.createShaderModule(shaderModuleCreateInfo);
 
 	pipelineShaderStageCreateInfo = vk::PipelineShaderStageCreateInfo{
 		.stage = stageFlagBits,
@@ -46,7 +47,7 @@ Shader::Shader(const Device device, const std::string& filename,
 	};
 }
 
-void Shader::release(const Device device) const
+void Shader::release() const
 {
-	vk::Device(device).destroyShaderModule(shaderModule);
+	device->logicalDevice.destroyShaderModule(shaderModule);
 }
