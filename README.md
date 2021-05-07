@@ -2,8 +2,8 @@
 mvk is a library for building vulkan based samples written in C++ 20</br>
 
 Features : 
-- Import OBJ file
-- Import GLTF file  
+- OBJ files
+- GLTF files
 - Multiple graphic pipelines support
 - Bdrf lighting 
 
