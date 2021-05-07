@@ -2,18 +2,17 @@
 mvk is a library for building vulkan based samples written in C++ 20</br>
 
 Features : 
-- Loading textures
-- Loading 3D model (vertex & faces)
-- Depth test
+- Import OBJ file
+- Import GLTF file  
 - Multiple graphic pipelines support
+- Bdrf lighting 
 
 Textures supported : (all stb_image formats) **.jpg**, **.png**, **.tga**, **.bmp**, **.psd**, **.gif**, **.hdr**, **.pic** </br>
-3D models extensions supported : **.obj**
+3D models extensions supported : **.obj**, **gltf**
 
 Next steps :
-- **.gltf** loader
-- Work on a simple brdf rendering
-- Navigation in scene view with mouse and keyboard
+- Supporting Animations in gltf files
+- Improving brdf shading with Image Based Light source
 
 # Libraries
 Vulkan hpp c++ bindings for Vulkan : [Vulkan-hpp](https://github.com/KhronosGroup/Vulkan-Hpp)</br>
@@ -23,6 +22,7 @@ Windows diplay : [GLFW](https://www.glfw.org/)</br>
 Maths : [GLM](https://glm.g-truc.net/0.9.9/index.html)</br>
 Image loading : [stb_image.h](https://github.com/nothings/stb/blob/master/stb_image.h)</br>
 Model loading : [tiny_obj_loader.h](https://github.com/tinyobjloader/tinyobjloader)</br>
+Model loading : [tiny_gltf.h](https://github.com/syoyo/tinygltf)</br>
 
 ## Simple Viewer (SimpleViewer)
 
