@@ -113,6 +113,7 @@ void Scene::updateUniformBufferObject(const float time,
 	ubo.view = camera.viewMatrix;
 	ubo.proj = camera.projMatrix;
 	ubo.proj[1][1] *= -1;
+	ubo.camPos = camera.position;
 
 	mapDataToBuffer(ptrDevice->allocator, uniformBuffer, &ubo, sizeof ubo);
 }

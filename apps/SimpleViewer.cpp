@@ -88,30 +88,32 @@ public:
 		const auto path = "assets/textures/lena.jpg";
 
 		textures.lena.loadFromFile(&device, transferQueue, path,
-		                           vk::Format::eR8G8B8A8Srgb);
+		                           vk::Format::eR8G8B8A8Unorm);
 
 		mvk::BaseMaterialDescription description;
-		description.albedo = &textures.lena;
+		description.baseColor = &textures.lena;
 
 		materials.standard.load(&device, description);
 
-		std::array<vk::DescriptorSetLayout, 3> descriptorSetLayouts = {
+		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
 			mvk::Scene::getDescriptorSetLayout(&device),
 			mvk::Model::getDescriptorSetLayout(&device),
 			mvk::BaseMaterial::getDescriptorSetLayout(&device)
 		};
 
-		const auto descriptorCount =
-			static_cast<uint32_t>(descriptorSetLayouts.size());
+		const auto shaderStageInfo =
+			materials.standard.getPipelineShaderStageCreateInfo();
 
-		pipelines.standard.build(&device,
-		                         swapchain.getSwapchainExtent(),
-		                         renderPass.getRenderPass(),
-		                         materials.standard.
-		                                   getPipelineShaderStageCreateInfo(),
-		                         descriptorSetLayouts.data(),
-		                         descriptorCount,
-		                         vk::FrontFace::eClockwise);
+		const mvk::GraphicPipelineCreateInfo opaquePipelineCreateInfo =
+		{
+			.extent = swapchain.getSwapchainExtent(),
+			.renderPass = renderPass.getRenderPass(),
+			.shaderStageCreateInfos = shaderStageInfo,
+			.descriptorSetLayouts = descriptorSetLayouts,
+			.frontFace = vk::FrontFace::eClockwise
+		};
+
+		pipelines.standard.build(&device, opaquePipelineCreateInfo);
 	}
 
 	~SimpleViewer()

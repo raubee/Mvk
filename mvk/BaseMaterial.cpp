@@ -6,7 +6,11 @@ void BaseMaterial::load(Device* device,
                         const BaseMaterialDescription description)
 
 {
-	albedo = description.albedo;
+	alphaMode = description.alphaMode;
+
+	baseColor = description.baseColor;
+	normal = description.normal;
+	metallicRoughness = description.metallicRoughness;
 
 	Material::load(device,
 	               new Shader(device, "shaders/base.vert.spv",
@@ -34,6 +38,39 @@ void BaseMaterial::release()
 	descriptorSetLayout = nullptr;
 
 	Material::release();
+}
+
+void BaseMaterial::createDescriptorSetLayout(Device* device)
+{
+	std::vector<vk::DescriptorSetLayoutBinding> layoutBindings
+		= {
+
+		// BaseColor
+		{0, vk::DescriptorType::eCombinedImageSampler, 1,
+		vk::ShaderStageFlagBits::eFragment},
+
+		// Normal
+		{1, vk::DescriptorType::eCombinedImageSampler, 1,
+		vk::ShaderStageFlagBits::eFragment},
+
+		// MetallicRoughness
+		{2, vk::DescriptorType::eCombinedImageSampler, 1,
+		vk::ShaderStageFlagBits::eFragment},
+
+	};
+
+	const auto bindingCount =
+		static_cast<uint32_t>(layoutBindings.size());
+
+	const vk::DescriptorSetLayoutCreateInfo
+		descriptorSetLayoutCreateInfo = {
+			.bindingCount = bindingCount,
+			.pBindings = layoutBindings.data()
+	};
+
+	descriptorSetLayout = device->logicalDevice
+		.createDescriptorSetLayout(
+			descriptorSetLayoutCreateInfo);
 }
 
 void BaseMaterial::createDescriptorPool()
@@ -73,22 +110,42 @@ void BaseMaterial::updateDescriptorSets()
 {
 	for (const auto& descriptorSet : descriptorSets)
 	{
-		vk::DescriptorImageInfo albedoDescriptorImageInfo = {
-			.sampler = albedo->getSampler(),
-			.imageView = albedo->getImageView(),
-			.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
-		};
+		std::vector<vk::WriteDescriptorSet> writeDescriptorSets = {
 
-		vk::WriteDescriptorSet writeDescriptorSet = {
-			.dstSet = descriptorSet,
-			.dstBinding = 0,
-			.dstArrayElement = 0,
-			.descriptorCount = 1,
-			.descriptorType = vk::DescriptorType::eCombinedImageSampler,
-			.pImageInfo = &albedoDescriptorImageInfo
-		};
+			// Base color
+			 {
+				.dstSet = descriptorSet,
+				.dstBinding = 0,
+				.dstArrayElement = 0,
+				.descriptorCount = 1,
+				.descriptorType = vk::DescriptorType::eCombinedImageSampler,
+				.pImageInfo = &baseColor->descriptorInfo
+			},
 
+			// Normal
+			{
+				.dstSet = descriptorSet,
+				.dstBinding = 1,
+				.dstArrayElement = 0,
+				.descriptorCount = 1,
+				.descriptorType = vk::DescriptorType::eCombinedImageSampler,
+				.pImageInfo = &normal->descriptorInfo
+			},
+
+			// Metallic - Roughness
+			{
+				.dstSet = descriptorSet,
+				.dstBinding = 2,
+				.dstArrayElement = 0,
+				.descriptorCount = 1,
+				.descriptorType = vk::DescriptorType::eCombinedImageSampler,
+				.pImageInfo = &metallicRoughness->descriptorInfo
+			} };
+
+		const auto size = static_cast<uint32_t>(writeDescriptorSets.size());
+		
 		ptrDevice->logicalDevice
-		         .updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+		         .updateDescriptorSets(size, writeDescriptorSets.data(), 0, 
+					 nullptr);
 	}
 }

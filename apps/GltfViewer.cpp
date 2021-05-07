@@ -12,7 +12,8 @@ class GltfViewer : public mvk::AppBase
 
 	struct GraphicPipelines
 	{
-		mvk::GraphicPipeline standard;
+		mvk::GraphicPipeline opaque;
+		mvk::GraphicPipeline alpha;
 	}
 	pipelines;
 
@@ -33,36 +34,49 @@ public:
 		const auto modelPath = "assets/models/flightHelmet/FlightHelmet.gltf";
 		//const auto modelPath = "assets/models/scifiHelmet/SciFiHelmet.gltf";
 		//const auto modelPath = "assets/models/camera/AntiqueCamera.gltf";
-		//const auto modelPath = "assets/models/adamHead/adamHead1.gltf";
 		//const auto modelPath = "assets/models/lantern/lantern.gltf";
 		//const auto modelPath = "assets/models/buggy/buggy.gltf";
 
 		models.scene.loadFromFile(&device, transferQueue, modelPath);
 
-		std::array<vk::DescriptorSetLayout, 3> descriptorSetLayouts = {
+		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
 			mvk::Scene::getDescriptorSetLayout(&device),
 			mvk::Model::getDescriptorSetLayout(&device),
 			mvk::BaseMaterial::getDescriptorSetLayout(&device)
 		};
 
-		const auto descriptorCount =
-			static_cast<int32_t>(descriptorSetLayouts.size());
-
 		const auto shaderStageInfo =
 			models.scene.materials[0]->getPipelineShaderStageCreateInfo();
 
-		pipelines.standard.build(&device,
-		                         swapchain.getSwapchainExtent(),
-		                         renderPass.getRenderPass(),
-		                         shaderStageInfo,
-		                         descriptorSetLayouts.data(),
-		                         descriptorCount);
+		const mvk::GraphicPipelineCreateInfo opaquePipelineCreateInfo =
+		{
+			.extent = swapchain.getSwapchainExtent(),
+			.renderPass = renderPass.getRenderPass(),
+			.shaderStageCreateInfos = shaderStageInfo,
+			.descriptorSetLayouts = descriptorSetLayouts,
+			.frontFace = vk::FrontFace::eCounterClockwise
+		};
+
+		pipelines.opaque.build(&device, opaquePipelineCreateInfo);
+
+		const mvk::GraphicPipelineCreateInfo alphaPipelineCreateInfo =
+		{
+			.extent = swapchain.getSwapchainExtent(),
+			.renderPass = renderPass.getRenderPass(),
+			.shaderStageCreateInfos = shaderStageInfo,
+			.descriptorSetLayouts = descriptorSetLayouts,
+			.frontFace = vk::FrontFace::eCounterClockwise,
+			.alpha = true
+		};
+
+		pipelines.alpha.build(&device, alphaPipelineCreateInfo);
 	}
 
 	~GltfViewer()
 	{
 		models.scene.release();
-		pipelines.standard.release();
+		pipelines.opaque.release();
+		pipelines.alpha.release();
 	}
 
 	void buildCommandBuffer(const vk::CommandBuffer commandBuffer,
@@ -92,7 +106,19 @@ public:
 		commandBuffer.beginRenderPass(renderPassBeginInfo,
 		                              vk::SubpassContents::eInline);
 
-		const auto graphicPipeline = pipelines.standard;
+		renderPipeline(commandBuffer, pipelines.opaque,
+		               mvk::AlphaMode::NO_ALPHA);
+		renderPipeline(commandBuffer, pipelines.alpha,
+		               mvk::AlphaMode::ALPHA_BLEND);
+
+		commandBuffer.endRenderPass();
+		commandBuffer.end();
+	}
+
+	void renderPipeline(const vk::CommandBuffer commandBuffer,
+	                    const mvk::GraphicPipeline graphicPipeline,
+	                    const mvk::AlphaMode alphaMode)
+	{
 		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
 		const auto pipeline = graphicPipeline.getPipeline();
 
@@ -101,70 +127,75 @@ public:
 
 		for (const auto& node : models.scene.nodes)
 		{
-			if (!node->hasMesh) continue;
+			renderNode(commandBuffer, node, pipelineLayout, alphaMode);
+		}
+	}
 
-			const auto material =
-				dynamic_cast<mvk::BaseMaterial*>(
-					models.scene.materials.at(node->matId));
+	void renderNode(const vk::CommandBuffer commandBuffer, mvk::Node* node,
+	                const vk::PipelineLayout pipelineLayout,
+	                const mvk::AlphaMode alphaMode)
+	{
+		if (!node->hasMesh) return;
 
-			std::vector<vk::DescriptorSet> descriptorSets = {
-				scene.getDescriptorSet(0),
-				node->getDescriptorSet(),
-				material->getDescriptorSet()
-			};
+		const auto material =
+			dynamic_cast<mvk::BaseMaterial*>(
+				models.scene.materials.at(node->matId));
 
-			const auto descriptorCount =
-				static_cast<uint32_t>(descriptorSets.size());
+		if (material->alphaMode != alphaMode) return;
 
-			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-			                                 pipelineLayout, 0,
-			                                 descriptorCount,
-			                                 descriptorSets.data(), 0, nullptr);
+		std::vector<vk::DescriptorSet> descriptorSets = {
+			scene.getDescriptorSet(0),
+			node->getDescriptorSet(),
+			material->getDescriptorSet()
+		};
 
-			vk::Viewport viewport = {
-				.x = 0.0f,
-				.y = 0.0f,
-				.width = static_cast<float>(extent.width),
-				.height = static_cast<float>(extent.height),
-				.minDepth = 0.0f,
-				.maxDepth = 1.0f
-			};
+		const auto descriptorCount =
+			static_cast<uint32_t>(descriptorSets.size());
 
-			commandBuffer.setViewport(0, viewport);
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+		                                 pipelineLayout, 0, descriptorCount,
+		                                 descriptorSets.data(), 0, nullptr);
 
-			vk::Rect2D scissor = {
-				.offset = {0, 0},
-				.extent = extent
-			};
+		vk::Viewport viewport = {
+			.x = 0.0f,
+			.y = 0.0f,
+			.width = static_cast<float>(width),
+			.height = static_cast<float>(height),
+			.minDepth = 0.0f,
+			.maxDepth = 1.0f
+		};
 
-			commandBuffer.setScissor(0, scissor);
+		commandBuffer.setViewport(0, viewport);
 
-			const auto vertexBuffer = models.scene.vertexBuffer;
-			const auto indexBuffer = models.scene.indexBuffer;
+		vk::Rect2D scissor = {
+			.offset = {0, 0},
+			.extent = swapchain.getSwapchainExtent()
+		};
 
-			vk::DeviceSize offsets[] = {0};
+		commandBuffer.setScissor(0, scissor);
+
+		const auto vertexBuffer = models.scene.vertexBuffer;
+		const auto indexBuffer = models.scene.indexBuffer;
+
+		vk::DeviceSize offsets[] = {0};
+
+		commandBuffer.
+			bindVertexBuffers(0, 1, &vertexBuffer.buffer, offsets);
+
+		if (node->hasIndices)
+		{
+			commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
+			                              vk::IndexType::eUint32);
 
 			commandBuffer.
-				bindVertexBuffers(0, 1, &vertexBuffer.buffer, offsets);
-
-			if (node->hasIndices)
-			{
-				commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
-				                              vk::IndexType::eUint32);
-
-				commandBuffer.
-					drawIndexed(node->indexCount, 1,
-					            node->startIndex, 0, 0);
-			}
-			else
-			{
-				commandBuffer.draw(node->vertexCount, 1,
-				                   node->startVertex, 0);
-			}
+				drawIndexed(node->indexCount, 1,
+				            node->startIndex, 0, 0);
 		}
-
-		commandBuffer.endRenderPass();
-		commandBuffer.end();
+		else
+		{
+			commandBuffer.draw(node->vertexCount, 1,
+			                   node->startVertex, 0);
+		}
 	}
 };
 

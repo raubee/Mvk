@@ -5,17 +5,27 @@
 
 namespace mvk
 {
+	enum AlphaMode
+	{
+		NO_ALPHA,
+		ALPHA_BLEND,
+		ALPHA_CUTOFF
+	};
+
 	struct BaseMaterialDescription
 	{
-		Texture2D* albedo;
+		AlphaMode alphaMode = NO_ALPHA;
+
+		Texture2D* baseColor = Texture2D::empty;
+		Texture2D* normal = Texture2D::empty;
+		Texture2D* metallicRoughness = Texture2D::empty;
+
+		Texture2D* occlusion = Texture2D::empty;
+		Texture2D* emissive = Texture2D::empty;
 	};
 
 	class BaseMaterial : public Material
 	{
-		inline static BaseMaterialDescription defaultDescription{
-			.albedo = nullptr
-		};
-
 		inline static vk::DescriptorSetLayout descriptorSetLayout;
 
 		void createDescriptorPool();
@@ -27,10 +37,13 @@ namespace mvk
 		vk::DescriptorPool descriptorPool;
 		std::vector<vk::DescriptorSet> descriptorSets;
 
-		Texture2D* albedo;
+		AlphaMode alphaMode;
 
-		void load(Device* device,
-		          BaseMaterialDescription description = defaultDescription);
+		Texture2D* baseColor;
+		Texture2D* normal;
+		Texture2D* metallicRoughness;
+
+		void load(Device* device, BaseMaterialDescription description);
 
 		void release() override;
 
@@ -42,31 +55,7 @@ namespace mvk
 			return descriptorSetLayout;
 		}
 
-		static void createDescriptorSetLayout(Device* device)
-		{
-			const vk::DescriptorSetLayoutBinding albedoLayoutBinding = {
-				.binding = 0,
-				.descriptorType = vk::DescriptorType::eCombinedImageSampler,
-				.descriptorCount = 1,
-				.stageFlags = vk::ShaderStageFlagBits::eFragment
-			};
-
-			std::vector<vk::DescriptorSetLayoutBinding> layoutBindings
-				= {albedoLayoutBinding};
-
-			const auto bindingCount =
-				static_cast<uint32_t>(layoutBindings.size());
-
-			const vk::DescriptorSetLayoutCreateInfo
-				descriptorSetLayoutCreateInfo = {
-					.bindingCount = bindingCount,
-					.pBindings = layoutBindings.data()
-				};
-
-			descriptorSetLayout = device->logicalDevice
-			                            .createDescriptorSetLayout(
-				                            descriptorSetLayoutCreateInfo);
-		}
+		static void createDescriptorSetLayout(Device* device);
 
 		vk::DescriptorSet getDescriptorSet() const
 		{

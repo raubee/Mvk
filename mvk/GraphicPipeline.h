@@ -4,6 +4,16 @@
 
 namespace mvk
 {
+	struct GraphicPipelineCreateInfo
+	{
+		vk::Extent2D extent;
+		vk::RenderPass renderPass;
+		std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos;
+		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts;
+		vk::FrontFace frontFace;
+		bool alpha;
+	};
+
 	class GraphicPipeline
 	{
 		Device* ptrDevice;
@@ -13,16 +23,10 @@ namespace mvk
 		vk::DescriptorSetLayout descriptorSetLayout;
 
 	public:
-		
+
 		void build(Device* device,
-			vk::Extent2D extent,
-			vk::RenderPass renderPass,
-			std::vector<vk::PipelineShaderStageCreateInfo>
-			shaderStageCreateInfos,
-			vk::DescriptorSetLayout* descriptorSetLayouts,
-			uint32_t descriptorLayoutsSize,
-			vk::FrontFace frontFace = vk::FrontFace::eCounterClockwise);
-		
+		           GraphicPipelineCreateInfo createInfo);
+
 		void release() const;
 
 		vk::DescriptorSetLayout getDescriptorSetLayout() const

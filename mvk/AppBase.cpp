@@ -19,12 +19,15 @@ AppBase::AppBase(const AppInfo info)
 	createQueues();
 	createSemaphores();
 	updateSwapchain();
+	createEmptyTexture();
 	setupScene();
 }
 
 AppBase::~AppBase()
 {
 	waitIdle();
+
+	Texture2D::empty->release();
 
 	scene.release();
 	renderPass.release();
@@ -388,7 +391,6 @@ void AppBase::drawFrame()
 void AppBase::updateWindow()
 {
 	updateSwapchain();
-	buildCommandBuffers();
 
 	const auto extent = swapchain.getSwapchainExtent();
 
@@ -396,6 +398,8 @@ void AppBase::updateWindow()
 	height = extent.height;
 
 	scene.camera.updateAspectRatio(float(width) / float(height));
+
+	buildCommandBuffers();
 }
 
 void AppBase::run()
@@ -438,6 +442,13 @@ void AppBase::createSwapchainFrames()
 {
 	swapchain.createSwapchainFrames(renderPass.getRenderPass());
 	swapchain.createCommandBuffers();
+}
+
+void AppBase::createEmptyTexture()
+{
+	Texture2D::empty = new Texture2D();
+	const auto blackPixel = new unsigned char[4]{0, 0, 0, 0};
+	Texture2D::empty->loadRaw(&device, transferQueue, blackPixel, 1, 1);
 }
 
 void AppBase::setupScene()

@@ -575,9 +575,8 @@ void Model::loadTextures(const vk::Queue transferQueue,
 
 		try
 		{
-			texture->loadFromFile(
-				ptrDevice, transferQueue, path.c_str(),
-				vk::Format::eR8G8B8A8Srgb);
+			texture->loadRaw(ptrDevice, transferQueue,
+			                 image.image.data(), image.width, image.height);
 		}
 		catch (std::runtime_error e)
 		{
@@ -587,31 +586,54 @@ void Model::loadTextures(const vk::Queue transferQueue,
 
 		textures.push_back(texture);
 	}
-
-	if (textures.empty())
-	{
-		const auto empty = Texture2D::empty(ptrDevice, transferQueue);
-		textures.push_back(empty);
-	}
 }
 
 void Model::loadMaterials(const tinygltf::Model model)
 {
 	for (const auto& mat : model.materials)
 	{
+		AlphaMode alphaMode;
+		auto alpha = mat.alphaMode;
+		
+		if (alpha == "BLEND")
+		{
+			alphaMode = AlphaMode::ALPHA_BLEND;
+		}
+		else if (alpha == "MASK")
+		{
+			alphaMode = AlphaMode::ALPHA_CUTOFF;
+		}
+		else // Opaque or default
+		{
+			alphaMode = AlphaMode::NO_ALPHA;
+		}
+
 		BaseMaterialDescription materialDescription = {
+			.alphaMode = alphaMode
 		};
 
-		if (mat.pbrMetallicRoughness.baseColorTexture.index > -1 &&
-			mat.pbrMetallicRoughness.baseColorTexture.index < textures.size())
+		// BaseColor
+		if (mat.pbrMetallicRoughness.baseColorTexture.index > -1)
 		{
-			const auto texture =
+			const auto& id =
 				model.textures[mat.pbrMetallicRoughness.baseColorTexture.index];
-			materialDescription.albedo = textures[texture.source];
+			materialDescription.baseColor = textures[id.source];
 		}
-		else
+
+		// Normal
+		if (mat.normalTexture.index > -1)
 		{
-			materialDescription.albedo = textures[0];
+			const auto& id = model.textures[mat.normalTexture.index];
+			materialDescription.normal = textures[id.source];
+		}
+
+		// MetallicRoughness
+		if (mat.pbrMetallicRoughness.metallicRoughnessTexture.index > -1)
+		{
+			const auto& id =
+				model.textures[
+					mat.pbrMetallicRoughness.metallicRoughnessTexture.index];
+			materialDescription.metallicRoughness = textures[id.source];
 		}
 
 		auto material = new BaseMaterial;

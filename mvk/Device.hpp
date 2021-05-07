@@ -366,7 +366,7 @@ namespace mvk
 
 		alloc::Image transferImageDataToGpuImage(
 			const vk::Queue transferQueue,
-			unsigned char* pixels,
+			const unsigned char* pixels,
 			const uint32_t width,
 			const uint32_t height,
 			const vk::Format format) const

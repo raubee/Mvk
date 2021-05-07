@@ -17,10 +17,14 @@ namespace mvk
 
 		void createImageView();
 		void createSampler();
+		void createDescriptorInfo();
 
 	public:
+
+		vk::DescriptorImageInfo descriptorInfo;
+
 		void loadRaw(Device* device, vk::Queue transferQueue,
-		             std::vector<unsigned char> pixels, int w, int h);
+		             const unsigned char* pixels, int w, int h);
 
 		void loadFromFile(Device* device,
 		                  vk::Queue transferQueue,
@@ -36,19 +40,6 @@ namespace mvk
 		uint32_t getHeight() const { return height; }
 		vk::Format getFormat() const { return format; }
 
-		inline static Texture2D* sEmpty;
-
-		static Texture2D* empty(Device* device,
-		                        const vk::Queue transferQueue)
-		{
-			if (sEmpty == nullptr)
-			{
-				sEmpty = new Texture2D();
-				const std::vector<unsigned char> pixel{0};
-				sEmpty->loadRaw(device, transferQueue, pixel, 1, 1);
-			}
-
-			return sEmpty;
-		}
+		inline static Texture2D* empty;
 	};
 }

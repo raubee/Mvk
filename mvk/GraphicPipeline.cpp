@@ -4,13 +4,7 @@
 using namespace mvk;
 
 void GraphicPipeline::build(Device* device,
-                            vk::Extent2D extent,
-                            vk::RenderPass renderPass,
-                            std::vector<vk::PipelineShaderStageCreateInfo>
-                            shaderStageCreateInfos,
-                            vk::DescriptorSetLayout* descriptorSetLayouts,
-                            uint32_t descriptorLayoutsSize,
-                            vk::FrontFace frontFace)
+                            GraphicPipelineCreateInfo createInfo)
 {
 	this->ptrDevice = device;
 
@@ -38,8 +32,8 @@ void GraphicPipeline::build(Device* device,
 	const vk::Viewport viewport = {
 		.x = 0.0f,
 		.y = 0.0f,
-		.width = static_cast<float>(extent.width),
-		.height = static_cast<float>(extent.height),
+		.width = static_cast<float>(createInfo.extent.width),
+		.height = static_cast<float>(createInfo.extent.height),
 		.minDepth = 0.0f,
 		.maxDepth = 1.0f
 	};
@@ -49,7 +43,7 @@ void GraphicPipeline::build(Device* device,
 			.x = 0,
 			.y = 0
 		},
-		.extent = extent
+		.extent = createInfo.extent
 	};
 
 	const vk::PipelineViewportStateCreateInfo pipelineViewportStateCreateInfo =
@@ -67,7 +61,7 @@ void GraphicPipeline::build(Device* device,
 			.rasterizerDiscardEnable = VK_FALSE,
 			.polygonMode = vk::PolygonMode::eFill,
 			.cullMode = vk::CullModeFlagBits::eBack,
-			.frontFace = frontFace,
+			.frontFace = createInfo.frontFace,
 			.depthBiasEnable = VK_FALSE,
 			.lineWidth = 1.0f,
 		};
@@ -91,12 +85,18 @@ void GraphicPipeline::build(Device* device,
 
 	/** Color blending **/
 	vk::PipelineColorBlendAttachmentState pipelineColorBlendAttachmentState = {
-		.blendEnable = vk::Bool32(false),
+		.blendEnable = vk::Bool32(createInfo.alpha),
+		.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+		.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+		.colorBlendOp = vk::BlendOp::eAdd,
+		.srcAlphaBlendFactor = vk::BlendFactor::eSrcAlpha,
+		.dstAlphaBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+		.alphaBlendOp = vk::BlendOp::eAdd,
 		.colorWriteMask =
 		vk::ColorComponentFlagBits::eR |
 		vk::ColorComponentFlagBits::eG |
 		vk::ColorComponentFlagBits::eB |
-		vk::ColorComponentFlagBits::eA
+		vk::ColorComponentFlagBits::eA,
 	};
 
 	vk::PipelineColorBlendStateCreateInfo pipelineColorBlendStateCreateInfo = {
@@ -119,8 +119,9 @@ void GraphicPipeline::build(Device* device,
 
 	/** Pipeline layout **/
 	vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
-		.setLayoutCount = descriptorLayoutsSize,
-		.pSetLayouts = descriptorSetLayouts
+		.setLayoutCount =
+		static_cast<uint32_t>(createInfo.descriptorSetLayouts.size()),
+		.pSetLayouts = createInfo.descriptorSetLayouts.data()
 	};
 
 	pipelineLayout =
@@ -129,8 +130,8 @@ void GraphicPipeline::build(Device* device,
 	const vk::PipelineCache pipelineCache;
 	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {
 		.stageCount =
-		static_cast<uint32_t>(shaderStageCreateInfos.size()),
-		.pStages = shaderStageCreateInfos.data(),
+		static_cast<uint32_t>(createInfo.shaderStageCreateInfos.size()),
+		.pStages = createInfo.shaderStageCreateInfos.data(),
 		.pVertexInputState = &pipelineVertexInputStateCreateInfo,
 		.pInputAssemblyState = &pipelineInputAssemblyStateCreateInfo,
 		.pViewportState = &pipelineViewportStateCreateInfo,
@@ -140,7 +141,7 @@ void GraphicPipeline::build(Device* device,
 		.pColorBlendState = &pipelineColorBlendStateCreateInfo,
 		.pDynamicState = &pipelineDynamicStateCreateInfo,
 		.layout = pipelineLayout,
-		.renderPass = renderPass,
+		.renderPass = createInfo.renderPass,
 		.subpass = 0
 	};
 

@@ -11,7 +11,7 @@
 #include "Vertex.h"
 #include "Scene.h"
 #include "RenderPass.h"
-
+#include "Texture2D.h"
 #include <chrono>
 
 namespace mvk
@@ -32,6 +32,8 @@ namespace mvk
 		SwapChain swapchain;
 		RenderPass renderPass;
 		Scene scene;
+
+		Texture2D* empty;
 
 		vk::Queue graphicsQueue;
 		vk::Queue transferQueue;
@@ -94,6 +96,7 @@ namespace mvk
 		void updateSwapchain();
 		void createRenderPass();
 		void createSemaphores();
+		void createEmptyTexture();
 		void setupScene();
 
 		virtual void buildCommandBuffers();

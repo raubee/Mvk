@@ -26,13 +26,31 @@ void Texture2D::loadFromFile(Device* device,
 	this->height = static_cast<uint32_t>(h);
 	this->format = format;
 	this->image = device->transferImageDataToGpuImage(transferQueue, pixels,
-	                                                 width, height, format);
+	                                                  width, height, format);
 	createImageView();
 	createSampler();
+	createDescriptorInfo();
 
 	stbi_image_free(pixels);
 }
 
+void Texture2D::loadRaw(Device* device, const vk::Queue transferQueue,
+                        const unsigned char* pixels, const int w,
+                        const int h)
+{
+	this->ptrDevice = device;
+
+	this->width = static_cast<uint32_t>(w);
+	this->height = static_cast<uint32_t>(h);
+	this->format = vk::Format::eR8G8B8A8Unorm;
+	this->image = device->transferImageDataToGpuImage(transferQueue,
+	                                                  pixels, width,
+	                                                  height, format);
+
+	createImageView();
+	createSampler();
+	createDescriptorInfo();
+}
 
 void Texture2D::createImageView()
 {
@@ -76,21 +94,13 @@ void Texture2D::createSampler()
 	sampler = ptrDevice->logicalDevice.createSampler(samplerCreateInfo);
 }
 
-void Texture2D::loadRaw(Device* device, vk::Queue transferQueue,
-                        std::vector<unsigned char> pixels, const int w,
-                        const int h)
+void Texture2D::createDescriptorInfo()
 {
-	this->ptrDevice = device;
-
-	this->width = static_cast<uint32_t>(w);
-	this->height = static_cast<uint32_t>(h);
-	this->format = vk::Format::eR8G8B8A8Srgb;
-	this->image = device->transferImageDataToGpuImage(transferQueue,
-	                                                  pixels.data(), width,
-	                                                  height, format);
-
-	createImageView();
-	createSampler();
+	descriptorInfo = vk::DescriptorImageInfo{
+		.sampler = getSampler(),
+		.imageView = getImageView(),
+		.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
+	};
 }
 
 void Texture2D::release() const

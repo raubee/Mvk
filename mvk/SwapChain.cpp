@@ -1,5 +1,4 @@
 #include "SwapChain.h"
-#include "UniformBufferObject.h"
 
 using namespace mvk;
 

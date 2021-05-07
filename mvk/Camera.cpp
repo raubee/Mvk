@@ -38,8 +38,8 @@ void Camera::updateMatrix()
 	}
 	else if (type == CameraType::ORBIT)
 	{
-		const auto pos = glm::euclidean(glm::vec2(phi, theta)) * distance;
-		viewMatrix = glm::lookAt(pos + target, target, Camera::up);
+		position = glm::euclidean(glm::vec2(phi, theta)) * distance + target;
+		viewMatrix = glm::lookAt(position, target, Camera::up);
 	}
 }
 

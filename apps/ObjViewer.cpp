@@ -9,6 +9,8 @@ class ObjViewer : public mvk::AppBase
 	struct Textures
 	{
 		mvk::Texture2D albedo;
+		mvk::Texture2D normal;
+		mvk::Texture2D roughness;
 	}
 	textures;
 
@@ -45,41 +47,55 @@ public:
 		scene.camera.setDistance(1.5f);
 
 		const auto modelPath = "assets/models/ganesha/ganesha.obj";
+		const auto albedoPath =
+			"assets/models/ganesha/textures/Ganesha_BaseColor.jpg";
+		const auto normalPath =
+			"assets/models/ganesha/textures/Ganesha_Normal.jpg";
+		const auto roughnessPath =
+			"assets/models/ganesha/textures/Ganesha_Roughness.jpg";
 
 		models.ganesh.loadFromFile(&device, transferQueue, modelPath);
 
-		const auto albedoPath =
-			"assets/models/ganesha/textures/Ganesha_BaseColor.jpg";
-
 		textures.albedo.loadFromFile(&device, transferQueue, albedoPath,
-		                             vk::Format::eR8G8B8A8Srgb);
+		                             vk::Format::eR8G8B8A8Unorm);
+		textures.normal.loadFromFile(&device, transferQueue, normalPath,
+			vk::Format::eR8G8B8A8Unorm);
+		textures.roughness.loadFromFile(&device, transferQueue, roughnessPath,
+			vk::Format::eR8G8B8A8Unorm);
 
 		mvk::BaseMaterialDescription description;
-		description.albedo = &textures.albedo;
+		description.baseColor = &textures.albedo;
+		description.normal = &textures.normal;
+		description.metallicRoughness = &textures.roughness;
 
 		materials.standard.load(&device, description);
 
-		std::array<vk::DescriptorSetLayout, 3> descriptorSetLayouts = {
+		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
 			mvk::Scene::getDescriptorSetLayout(&device),
 			mvk::Model::getDescriptorSetLayout(&device),
 			mvk::BaseMaterial::getDescriptorSetLayout(&device)
 		};
 
-		const auto descriptorCount =
-			static_cast<int32_t>(descriptorSetLayouts.size());
+		const auto shaderStageInfo =
+			materials.standard.getPipelineShaderStageCreateInfo();
 
-		pipelines.standard.build(&device,
-		                         swapchain.getSwapchainExtent(),
-		                         renderPass.getRenderPass(),
-		                         materials
-		                         .standard.getPipelineShaderStageCreateInfo(),
-		                         descriptorSetLayouts.data(),
-		                         descriptorCount);
+		const mvk::GraphicPipelineCreateInfo opaquePipelineCreateInfo =
+		{
+			.extent = swapchain.getSwapchainExtent(),
+			.renderPass = renderPass.getRenderPass(),
+			.shaderStageCreateInfos = shaderStageInfo,
+			.descriptorSetLayouts = descriptorSetLayouts,
+			.frontFace = vk::FrontFace::eCounterClockwise
+		};
+
+		pipelines.standard.build(&device, opaquePipelineCreateInfo);
 	}
 
 	~ObjViewer()
 	{
 		textures.albedo.release();
+		textures.normal.release();
+		textures.roughness.release();
 		models.ganesh.release();
 		materials.standard.release();
 		pipelines.standard.release();

@@ -40,7 +40,7 @@ namespace mvk
 		static Buffer allocateMappedCpuToGpuBuffer(
 			const vma::Allocator allocator,
 			const vk::BufferCreateInfo
-			bufferCreateInfo, void* data)
+			bufferCreateInfo, const void* data)
 		{
 			const vma::AllocationCreateInfo allocationCreateInfo = {
 				.flags = vma::AllocationCreateFlagBits::eMapped,
