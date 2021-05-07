@@ -11,6 +11,8 @@ Textures supported : (all stb_image formats) **.jpg**, **.png**, **.tga**, **.bm
 3D models extensions supported : **.obj**, **gltf**
 
 Next steps :
+- Mipmaps support
+- Multi-sampling
 - Supporting Animations in gltf files
 - Improving brdf shading with Image Based Light source
 
