@@ -23,8 +23,8 @@ Vulkan memory allocator bindings for hpp and C++ 20 support : [Vma-hpp c++ 20 su
 Windows diplay : [GLFW](https://www.glfw.org/)</br>
 Maths : [GLM](https://glm.g-truc.net/0.9.9/index.html)</br>
 Image loading : [stb_image.h](https://github.com/nothings/stb/blob/master/stb_image.h)</br>
-Model loading : [tiny_obj_loader.h](https://github.com/tinyobjloader/tinyobjloader)</br>
-Model loading : [tiny_gltf.h](https://github.com/syoyo/tinygltf)</br>
+Obj files loading : [tiny_obj_loader.h](https://github.com/tinyobjloader/tinyobjloader)</br>
+Gltf files loading : [tiny_gltf.h](https://github.com/syoyo/tinygltf)</br>
 
 ## Simple Viewer (SimpleViewer)
 
