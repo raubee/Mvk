@@ -75,7 +75,7 @@ void BaseMaterial::createDescriptorSetLayout(Device* device)
 
 void BaseMaterial::createDescriptorPool()
 {
-	vk::DescriptorPoolSize descriptorPoolSize{
+	const vk::DescriptorPoolSize descriptorPoolSize{
 		.type = vk::DescriptorType::eCombinedImageSampler,
 		.descriptorCount = 1
 	};
@@ -92,13 +92,10 @@ void BaseMaterial::createDescriptorPool()
 
 void BaseMaterial::createDescriptorSets()
 {
-	std::vector<vk::DescriptorSetLayout> descriptorSetLayouts
-		(1, descriptorSetLayout);
-
 	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo = {
 		.descriptorPool = descriptorPool,
 		.descriptorSetCount = 1,
-		.pSetLayouts = descriptorSetLayouts.data()
+		.pSetLayouts = &descriptorSetLayout
 	};
 
 	descriptorSets = ptrDevice->logicalDevice

@@ -141,11 +141,11 @@ namespace mvk
 #if (NDEBUG)
 			/* List device validation layers */
 			auto deviceLayers = physicalDevice.enumerateDeviceLayerProperties();
-			
+
 			std::cout
 				<< "Supported devices layers: "
 				<< std::endl;
-			
+
 			for (const auto& layer : deviceLayers)
 			{
 				std::cout << layer.layerName << std::endl;
@@ -169,7 +169,9 @@ namespace mvk
 
 			allocator = alloc::init(physicalDevice, logicalDevice, instance);
 
+#if (NDEBUG)
 			std::cout << "Logical device created!" << std::endl;
+#endif
 
 			createCommandPool();
 		}
@@ -182,6 +184,18 @@ namespace mvk
 
 			commandPool = logicalDevice.
 				createCommandPool(commandPoolCreateInfo);
+		}
+
+		vk::Result acquireNextImageKHR(const vk::SwapchainKHR swapchain,
+		                               const vk::Semaphore
+		                               imageAvailableSemaphore,
+		                               uint32_t* imageIndex) const
+		{
+			return logicalDevice.acquireNextImageKHR(swapchain,
+			                                         UINT64_MAX,
+			                                         imageAvailableSemaphore,
+			                                         nullptr,
+			                                         imageIndex);
 		}
 
 		vk::CommandBuffer createCommandBuffer() const
@@ -199,18 +213,6 @@ namespace mvk
 		void freeCommandBuffer(vk::CommandBuffer commandBuffer) const
 		{
 			logicalDevice.freeCommandBuffers(commandPool, 1, &commandBuffer);
-		}
-
-		vk::Result acquireNextImageKHR(const vk::SwapchainKHR swapchain,
-		                               const vk::Semaphore
-		                               imageAvailableSemaphore,
-		                               uint32_t* imageIndex) const
-		{
-			return logicalDevice.acquireNextImageKHR(swapchain,
-			                                         UINT64_MAX,
-			                                         imageAvailableSemaphore,
-			                                         nullptr,
-			                                         imageIndex);
 		}
 
 		vk::CommandBuffer beginOneTimeSubmitCommands() const
@@ -278,7 +280,8 @@ namespace mvk
 			const vk::Queue transferQueue,
 			const vk::Image image,
 			const vk::ImageLayout oldLayout,
-			const vk::ImageLayout newLayout) const
+			const vk::ImageLayout newLayout,
+			const vk::ImageSubresourceRange subresourceRange) const
 		{
 			const auto commandBuffer = beginOneTimeSubmitCommands();
 
@@ -286,12 +289,7 @@ namespace mvk
 				.oldLayout = oldLayout,
 				.newLayout = newLayout,
 				.image = image,
-				.subresourceRange = {
-					.baseMipLevel = 0,
-					.levelCount = 1,
-					.baseArrayLayer = 0,
-					.layerCount = 1
-				}
+				.subresourceRange = subresourceRange
 			};
 
 
@@ -362,76 +360,6 @@ namespace mvk
 			                              1, &imageMemoryBarrier);
 
 			endOneTimeSubmitCommands(commandBuffer, transferQueue);
-		}
-
-		alloc::Image transferImageDataToGpuImage(
-			const vk::Queue transferQueue,
-			const unsigned char* pixels,
-			const uint32_t width,
-			const uint32_t height,
-			const vk::Format format) const
-		{
-			const vk::DeviceSize imageSize = width * height * 4;
-			const vk::BufferCreateInfo bufferCreateInfo = {
-				.size = imageSize,
-				.usage = vk::BufferUsageFlagBits::eTransferSrc
-			};
-
-			const auto stagingBuffer =
-				alloc::allocateMappedCpuToGpuBuffer(allocator, bufferCreateInfo,
-				                                    pixels);
-
-			const vk::Extent3D imageExtent = {
-				.width = width,
-				.height = height,
-				.depth = 1
-			};
-
-			const vk::ImageCreateInfo imageCreateInfo = {
-				.imageType = vk::ImageType::e2D,
-				.format = format,
-				.extent = imageExtent,
-				.mipLevels = 1,
-				.arrayLayers = 1,
-				.samples = vk::SampleCountFlagBits::e1,
-				.tiling = vk::ImageTiling::eOptimal,
-				.usage = vk::ImageUsageFlagBits::eTransferDst |
-				vk::ImageUsageFlagBits::eSampled,
-				.sharingMode = vk::SharingMode::eExclusive,
-				.initialLayout = vk::ImageLayout::eUndefined,
-			};
-
-			const auto imageBuffer = alloc::allocateGpuOnlyImage(allocator,
-			                                                     imageCreateInfo);
-
-			const vk::BufferImageCopy bufferImageCopy = {
-				.bufferOffset = 0,
-				.bufferRowLength = 0,
-				.bufferImageHeight = 0,
-				.imageSubresource = {
-					.aspectMask = vk::ImageAspectFlagBits::eColor,
-					.mipLevel = 0,
-					.baseArrayLayer = 0,
-					.layerCount = 1,
-				},
-				.imageOffset = {0, 0},
-				.imageExtent = imageExtent,
-			};
-
-			transitionImageLayout(transferQueue, imageBuffer.image,
-			                      vk::ImageLayout::eUndefined,
-			                      vk::ImageLayout::eTransferDstOptimal);
-
-			copyCpuBufferToGpuImage(transferQueue, stagingBuffer, imageBuffer,
-			                        bufferImageCopy);
-
-			transitionImageLayout(transferQueue, imageBuffer.image,
-			                      vk::ImageLayout::eTransferDstOptimal,
-			                      vk::ImageLayout::eShaderReadOnlyOptimal);
-
-			alloc::deallocateBuffer(allocator, stagingBuffer);
-
-			return imageBuffer;
 		}
 
 		alloc::Buffer transferDataSetToGpuBuffer(

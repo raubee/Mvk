@@ -175,7 +175,7 @@ void AppBase::createInstance()
 	instanceLayers.push_back("VK_LAYER_LUNARG_standard_validation");
 #endif
 
-	const auto applicationInfo = vk::ApplicationInfo{
+	const vk::ApplicationInfo applicationInfo = {
 		.pApplicationName = "mvk-app",
 		.applicationVersion = 1,
 		.pEngineName = "mvk-engine",
@@ -453,10 +453,7 @@ void AppBase::createEmptyTexture()
 
 void AppBase::setupScene()
 {
-	const auto size = static_cast<uint32_t>(swapchain.getSwapchainSwainSize());
-	const auto extent = swapchain.getSwapchainExtent();
-
-	scene.setup(&device, size, extent);
+	scene.setup(&device);
 }
 
 void AppBase::buildCommandBuffers()
@@ -515,7 +512,7 @@ void AppBase::update()
 		scrollY = 0;
 	}
 
-	scene.update(time, swapchain.getSwapchainExtent());
+	scene.update(time);
 
 	lastMouseX = xPos;
 	lastMouseY = yPos;
@@ -533,6 +530,7 @@ void AppBase::glfwMouseButtonCallback(GLFWwindow* window, const int button,
                                       const int action, int mods)
 {
 	double xPos, yPos;
+
 	glfwGetCursorPos(window, &xPos, &yPos);
 
 	if (button == GLFW_MOUSE_BUTTON_LEFT)

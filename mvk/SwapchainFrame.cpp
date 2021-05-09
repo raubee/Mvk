@@ -21,9 +21,10 @@ void SwapchainFrame::release() const
 	ptrDevice->logicalDevice.destroy(imageView);
 }
 
-void SwapchainFrame::createImageView(vk::Image image, vk::Format format)
+void SwapchainFrame::createImageView(const vk::Image image,
+                                     const vk::Format format)
 {
-	const auto imageViewCreateInfo = vk::ImageViewCreateInfo{
+	const vk::ImageViewCreateInfo imageViewCreateInfo = {
 		.image = image,
 		.viewType = vk::ImageViewType::e2D,
 		.format = format,

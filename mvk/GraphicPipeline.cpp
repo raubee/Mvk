@@ -9,16 +9,21 @@ void GraphicPipeline::build(Device* device,
 	this->ptrDevice = device;
 
 	/** Vertex Input State settings **/
-	auto bindingDescription = Vertex::getBindingDescription();
-	auto attributeDescriptions = Vertex::getAttributeDescriptions();
-
 	const vk::PipelineVertexInputStateCreateInfo
 		pipelineVertexInputStateCreateInfo = {
-			.vertexBindingDescriptionCount = 1,
-			.pVertexBindingDescriptions = &bindingDescription,
-			.vertexAttributeDescriptionCount = static_cast<uint32_t>(
-				attributeDescriptions.size()),
-			.pVertexAttributeDescriptions = attributeDescriptions.data()
+			.vertexBindingDescriptionCount =
+			static_cast<uint32_t>(createInfo
+			                      .vertexInputBindingDescription.size()),
+
+			.pVertexBindingDescriptions =
+			createInfo.vertexInputBindingDescription.data(),
+
+			.vertexAttributeDescriptionCount =
+			static_cast<uint32_t>(createInfo
+			                      .vertexInputAttributeDescription.size()),
+
+			.pVertexAttributeDescriptions =
+			createInfo.vertexInputAttributeDescription.data()
 		};
 
 	/** Input Assembly **/
@@ -29,11 +34,12 @@ void GraphicPipeline::build(Device* device,
 		};
 
 	/** Viewport and Scissors **/
+	// Note: Viewport and Scissors will be updated dynamically with command buffers
 	const vk::Viewport viewport = {
 		.x = 0.0f,
 		.y = 0.0f,
-		.width = static_cast<float>(createInfo.extent.width),
-		.height = static_cast<float>(createInfo.extent.height),
+		.width = 0.0f,
+		.height = 0.0f,
 		.minDepth = 0.0f,
 		.maxDepth = 1.0f
 	};
@@ -43,7 +49,7 @@ void GraphicPipeline::build(Device* device,
 			.x = 0,
 			.y = 0
 		},
-		.extent = createInfo.extent
+		.extent = {0, 0}
 	};
 
 	const vk::PipelineViewportStateCreateInfo pipelineViewportStateCreateInfo =
@@ -67,16 +73,16 @@ void GraphicPipeline::build(Device* device,
 		};
 
 	/** Multi-Sampling **/
-	vk::PipelineMultisampleStateCreateInfo pipelineMultisampleStateCreateInfo =
-	{
-		.rasterizationSamples = vk::SampleCountFlagBits::e1,
-		.sampleShadingEnable = VK_FALSE,
-	};
+	const vk::PipelineMultisampleStateCreateInfo
+		pipelineMultisampleStateCreateInfo = {
+			.rasterizationSamples = vk::SampleCountFlagBits::e1,
+			.sampleShadingEnable = VK_FALSE,
+		};
 
 	/** Depth and stencil **/
-	vk::PipelineDepthStencilStateCreateInfo
+	const vk::PipelineDepthStencilStateCreateInfo
 		pipelineDepthStencilStateCreateInfo = {
-			.depthTestEnable = vk::Bool32(true),
+			.depthTestEnable = createInfo.depthTest,
 			.depthWriteEnable = vk::Bool32(true),
 			.depthCompareOp = vk::CompareOp::eLess,
 			.depthBoundsTestEnable = vk::Bool32(false),
@@ -84,41 +90,43 @@ void GraphicPipeline::build(Device* device,
 		};
 
 	/** Color blending **/
-	vk::PipelineColorBlendAttachmentState pipelineColorBlendAttachmentState = {
-		.blendEnable = vk::Bool32(createInfo.alpha),
-		.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
-		.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
-		.colorBlendOp = vk::BlendOp::eAdd,
-		.srcAlphaBlendFactor = vk::BlendFactor::eSrcAlpha,
-		.dstAlphaBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
-		.alphaBlendOp = vk::BlendOp::eAdd,
-		.colorWriteMask =
-		vk::ColorComponentFlagBits::eR |
-		vk::ColorComponentFlagBits::eG |
-		vk::ColorComponentFlagBits::eB |
-		vk::ColorComponentFlagBits::eA,
-	};
+	const vk::PipelineColorBlendAttachmentState
+		pipelineColorBlendAttachmentState = {
+			.blendEnable = createInfo.alpha,
+			.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+			.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+			.colorBlendOp = vk::BlendOp::eAdd,
+			.srcAlphaBlendFactor = vk::BlendFactor::eSrcAlpha,
+			.dstAlphaBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+			.alphaBlendOp = vk::BlendOp::eAdd,
+			.colorWriteMask =
+			vk::ColorComponentFlagBits::eR |
+			vk::ColorComponentFlagBits::eG |
+			vk::ColorComponentFlagBits::eB |
+			vk::ColorComponentFlagBits::eA,
+		};
 
-	vk::PipelineColorBlendStateCreateInfo pipelineColorBlendStateCreateInfo = {
-		.logicOpEnable = vk::Bool32(false),
-		.attachmentCount = 1,
-		.pAttachments = &pipelineColorBlendAttachmentState,
-	};
+	const vk::PipelineColorBlendStateCreateInfo
+		pipelineColorBlendStateCreateInfo = {
+			.logicOpEnable = vk::Bool32(false),
+			.attachmentCount = 1,
+			.pAttachments = &pipelineColorBlendAttachmentState,
+		};
 
 	/** Dynamic state **/
-	std::vector<vk::DynamicState> states = {
+	const std::vector<vk::DynamicState> states = {
 		vk::DynamicState::eViewport,
 		vk::DynamicState::eLineWidth,
 		vk::DynamicState::eScissor,
 	};
 
-	vk::PipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo = {
+	const vk::PipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo = {
 		.dynamicStateCount = static_cast<uint32_t>(states.size()),
 		.pDynamicStates = states.data()
 	};
 
 	/** Pipeline layout **/
-	vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
+	const vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
 		.setLayoutCount =
 		static_cast<uint32_t>(createInfo.descriptorSetLayouts.size()),
 		.pSetLayouts = createInfo.descriptorSetLayouts.data()
@@ -162,7 +170,6 @@ void GraphicPipeline::build(Device* device,
 
 void GraphicPipeline::release() const
 {
-	ptrDevice->logicalDevice.destroy(descriptorSetLayout);
 	ptrDevice->logicalDevice.destroyPipelineLayout(pipelineLayout);
 	ptrDevice->logicalDevice.destroyPipeline(pipeline);
 }

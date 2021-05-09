@@ -66,6 +66,7 @@ void SwapChain::createCommandBuffers()
 void SwapChain::createSwapchainFrames(const vk::RenderPass renderPass)
 {
 	swapchainFrames.resize(size);
+
 	const auto swapchainImages =
 		ptrDevice->logicalDevice.getSwapchainImagesKHR(swapchain);
 
@@ -79,7 +80,7 @@ void SwapChain::createSwapchainFrames(const vk::RenderPass renderPass)
 
 void SwapChain::release() const
 {
-	if(ptrDevice != nullptr)
+	if (ptrDevice != nullptr)
 	{
 		for (const auto& swapchainFrame : swapchainFrames)
 		{
@@ -89,7 +90,7 @@ void SwapChain::release() const
 		ptrDevice->logicalDevice.destroyImageView(depthImageView);
 		ptrDevice->destroyImage(depthImage);
 		ptrDevice->logicalDevice.destroySwapchainKHR(swapchain);
-	}	
+	}
 }
 
 void SwapChain::createDepthImageView(const vk::Queue transferQueue)
@@ -116,10 +117,18 @@ void SwapChain::createDepthImageView(const vk::Queue transferQueue)
 	depthImage = mvk::alloc::allocateGpuOnlyImage(ptrDevice->allocator,
 	                                              imageCreateInfo);
 
+	const vk::ImageSubresourceRange subresourceRange{
+		.baseMipLevel = 0,
+		.levelCount = 1,
+		.baseArrayLayer = 0,
+		.layerCount = 1
+	};
+
 	ptrDevice->transitionImageLayout(transferQueue, depthImage.image,
 	                                 vk::ImageLayout::eUndefined,
 	                                 vk::ImageLayout::
-	                                 eDepthStencilAttachmentOptimal);
+	                                 eDepthStencilAttachmentOptimal,
+	                                 subresourceRange);
 
 	const vk::ImageViewCreateInfo imageViewCreateInfo = {
 		.image = depthImage.image,

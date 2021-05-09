@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Device.hpp"
+#include "Skybox.h"
 #include "Camera.h"
 
 #define GLM_FORCE_RADIANS
@@ -26,22 +27,27 @@ namespace mvk
 		std::vector<vk::DescriptorSet> descriptorSets;
 		inline static vk::DescriptorSetLayout descriptorSetLayout;
 
-		void createDescriptorPool(uint32_t size);
-		void createDescriptorSets(uint32_t size);
+		void createDescriptorPool();
+		void createDescriptorSets();
 		void createUniformBufferObject();
 		void updateDescriptorSets();
-		void updateUniformBufferObject(float time,
-			vk::Extent2D extent) const;
+		void updateUniformBufferObject(float time) const;
 
 	public:
-		
+
 		Camera camera;
-		
+		Skybox* skybox;
+
 		glm::mat4 modelMatrix;
 
-		void setup(Device* device, uint32_t size, vk::Extent2D extent);
-		void update(float time, vk::Extent2D extent) const;
+		void setup(Device* device);
+		void setupSkybox(vk::Queue transferQueue, vk::RenderPass renderPass,
+		                 std::array<std::string, 6> texturePaths);
+
+		void update(float time) const;
 		void release() const;
+
+		void renderSkybox(vk::CommandBuffer commandBuffer) const;
 
 		static void createDescriptorSetLayout(Device* device)
 		{
@@ -53,17 +59,18 @@ namespace mvk
 			};
 
 			std::array<vk::DescriptorSetLayoutBinding, 1> layoutBindings
-				= { uniformBufferLayoutBinding };
+				= {uniformBufferLayoutBinding};
 
 			const vk::DescriptorSetLayoutCreateInfo
 				descriptorSetLayoutCreateInfo = {
 					.bindingCount = static_cast<uint32_t>(layoutBindings.size()
 					),
 					.pBindings = layoutBindings.data()
-			};
+				};
 
 			descriptorSetLayout = device->logicalDevice
-			.createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
+			                            .createDescriptorSetLayout(
+				                            descriptorSetLayoutCreateInfo);
 		}
 
 		static vk::DescriptorSetLayout getDescriptorSetLayout(Device* device)

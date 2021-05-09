@@ -24,6 +24,12 @@
     <None Include="shaders\norm.frag">
       <Filter>Fichiers de ressources</Filter>
     </None>
+    <None Include="shaders\skybox.vert">
+      <Filter>Fichiers de ressources</Filter>
+    </None>
+    <None Include="shaders\skybox.frag">
+      <Filter>Fichiers de ressources</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mvk\AppBase.h">
@@ -80,6 +86,12 @@
     <ClInclude Include="mvk\Camera.h">
       <Filter>Fichiers d%27en-tête</Filter>
     </ClInclude>
+    <ClInclude Include="mvk\Skybox.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
+    <ClInclude Include="mvk\CubemapTexture.h">
+      <Filter>Fichiers d%27en-tête</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="mvk\AppBase.cpp">
@@ -122,6 +134,12 @@
       <Filter>Fichiers sources</Filter>
     </ClCompile>
     <ClCompile Include="mvk\Camera.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="mvk\Skybox.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
+    <ClCompile Include="mvk\CubemapTexture.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
   </ItemGroup>

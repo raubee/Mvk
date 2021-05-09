@@ -4,7 +4,7 @@
 
 namespace mvk
 {
-	class Texture2D
+	class CubemapTexture
 	{
 		Device* ptrDevice;
 
@@ -29,12 +29,9 @@ namespace mvk
 
 		vk::DescriptorImageInfo descriptorInfo;
 
-		void loadRaw(Device* device, vk::Queue transferQueue,
-		             const unsigned char* pixels, int w, int h);
-
-		void loadFromFile(Device* device,
+		void loadFromSixFiles(Device* device,
 		                  vk::Queue transferQueue,
-		                  const char* path,
+		                  std::array<std::string, 6> texturePaths,
 		                  vk::Format format);
 
 		void release() const;
@@ -45,7 +42,5 @@ namespace mvk
 		uint32_t getWidth() const { return width; }
 		uint32_t getHeight() const { return height; }
 		vk::Format getFormat() const { return format; }
-
-		inline static Texture2D* empty;
 	};
 }

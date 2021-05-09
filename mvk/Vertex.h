@@ -24,43 +24,40 @@ namespace mvk
 			return vertexInputBindingDescription;
 		}
 
-		static std::array<vk::VertexInputAttributeDescription, 4>
+		static std::vector<vk::VertexInputAttributeDescription>
 		getAttributeDescriptions()
 		{
-			std::array<vk::VertexInputAttributeDescription, 4>
-				vertexInputAttributeDescriptions = {};
-
-			vertexInputAttributeDescriptions[0] = vk::
-				VertexInputAttributeDescription{
-					.location = 0,
-					.binding = 0,
-					.format = vk::Format::eR32G32B32Sfloat,
-					.offset = offsetof(Vertex, position)
+			std::vector<vk::VertexInputAttributeDescription>
+				vertexInputAttributeDescriptions = {
+					// Position
+					{
+						.location = 0,
+						.binding = 0,
+						.format = vk::Format::eR32G32B32Sfloat,
+						.offset = offsetof(Vertex, position)
+					},
+					// Vertex Color
+					{
+						.location = 1,
+						.binding = 0,
+						.format = vk::Format::eR32G32B32Sfloat,
+						.offset = offsetof(Vertex, color)
+					},
+					// Normal
+					{
+						.location = 2,
+						.binding = 0,
+						.format = vk::Format::eR32G32B32Sfloat,
+						.offset = offsetof(Vertex, normal)
+					},
+					// UV0
+					{
+						.location = 3,
+						.binding = 0,
+						.format = vk::Format::eR32G32Sfloat,
+						.offset = offsetof(Vertex, texCoord)
+					}
 				};
-
-			vertexInputAttributeDescriptions[1] = vk::
-				VertexInputAttributeDescription{
-					.location = 1,
-					.binding = 0,
-					.format = vk::Format::eR32G32B32Sfloat,
-					.offset = offsetof(Vertex, color)
-				};
-
-			vertexInputAttributeDescriptions[2] = vk::
-				VertexInputAttributeDescription{
-					.location = 2,
-					.binding = 0,
-					.format = vk::Format::eR32G32B32Sfloat,
-					.offset = offsetof(Vertex, normal)
-			};
-
-			vertexInputAttributeDescriptions[3] = vk::
-				VertexInputAttributeDescription{
-					.location = 3,
-					.binding = 0,
-					.format = vk::Format::eR32G32Sfloat,
-					.offset = offsetof(Vertex, texCoord)
-			};
 
 			return vertexInputAttributeDescriptions;
 		}
