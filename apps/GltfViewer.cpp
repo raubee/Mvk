@@ -1,4 +1,5 @@
 #include "AppBase.h"
+#include "Vertex.h"
 #include "Model.h"
 #include "BaseMaterial.h"
 
@@ -31,6 +32,18 @@ public:
 		scene.camera.setLookAt(glm::vec3(0.0f, 0.5f, 0.0f));
 		scene.camera.setDistance(1.5f);
 
+		const std::array<std::string, 6> skyboxTexturePaths = {
+			"assets/textures/skybox/right.jpg",
+			"assets/textures/skybox/left.jpg",
+			"assets/textures/skybox/top.jpg",
+			"assets/textures/skybox/bottom.jpg",
+			"assets/textures/skybox/front.jpg",
+			"assets/textures/skybox/back.jpg"
+		};
+
+		scene.setupSkybox(transferQueue, renderPass.getRenderPass(),
+		                  skyboxTexturePaths);
+
 		const auto modelPath = "assets/models/flightHelmet/FlightHelmet.gltf";
 		//const auto modelPath = "assets/models/scifiHelmet/SciFiHelmet.gltf";
 		//const auto modelPath = "assets/models/camera/AntiqueCamera.gltf";
@@ -38,6 +51,14 @@ public:
 		//const auto modelPath = "assets/models/buggy/buggy.gltf";
 
 		models.scene.loadFromFile(&device, transferQueue, modelPath);
+
+		const std::vector<vk::VertexInputBindingDescription> bindingDescription
+			= {
+				mvk::Vertex::getBindingDescription()
+			};
+
+		const auto& attributeDescriptions =
+			mvk::Vertex::getAttributeDescriptions();
 
 		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
 			mvk::Scene::getDescriptorSetLayout(&device),
@@ -50,7 +71,8 @@ public:
 
 		const mvk::GraphicPipelineCreateInfo opaquePipelineCreateInfo =
 		{
-			.extent = swapchain.getSwapchainExtent(),
+			.vertexInputBindingDescription = bindingDescription,
+			.vertexInputAttributeDescription = attributeDescriptions,
 			.renderPass = renderPass.getRenderPass(),
 			.shaderStageCreateInfos = shaderStageInfo,
 			.descriptorSetLayouts = descriptorSetLayouts,
@@ -61,7 +83,8 @@ public:
 
 		const mvk::GraphicPipelineCreateInfo alphaPipelineCreateInfo =
 		{
-			.extent = swapchain.getSwapchainExtent(),
+			.vertexInputBindingDescription = bindingDescription,
+			.vertexInputAttributeDescription = attributeDescriptions,
 			.renderPass = renderPass.getRenderPass(),
 			.shaderStageCreateInfos = shaderStageInfo,
 			.descriptorSetLayouts = descriptorSetLayouts,
@@ -85,6 +108,7 @@ public:
 		const auto extent = swapchain.getSwapchainExtent();
 
 		const vk::CommandBufferBeginInfo commandBufferBeginInfo{};
+
 		commandBuffer.begin(commandBufferBeginInfo);
 
 		const std::array<float, 4> clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -106,8 +130,29 @@ public:
 		commandBuffer.beginRenderPass(renderPassBeginInfo,
 		                              vk::SubpassContents::eInline);
 
+		vk::Viewport viewport = {
+			.x = 0.0f,
+			.y = 0.0f,
+			.width = static_cast<float>(width),
+			.height = static_cast<float>(height),
+			.minDepth = 0.0f,
+			.maxDepth = 1.0f
+		};
+
+		commandBuffer.setViewport(0, viewport);
+
+		vk::Rect2D scissor = {
+			.offset = {0, 0},
+			.extent = swapchain.getSwapchainExtent()
+		};
+
+		commandBuffer.setScissor(0, scissor);
+
+		scene.renderSkybox(commandBuffer);
+
 		renderPipeline(commandBuffer, pipelines.opaque,
 		               mvk::AlphaMode::NO_ALPHA);
+
 		renderPipeline(commandBuffer, pipelines.alpha,
 		               mvk::AlphaMode::ALPHA_BLEND);
 
@@ -155,24 +200,6 @@ public:
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
 		                                 pipelineLayout, 0, descriptorCount,
 		                                 descriptorSets.data(), 0, nullptr);
-
-		vk::Viewport viewport = {
-			.x = 0.0f,
-			.y = 0.0f,
-			.width = static_cast<float>(width),
-			.height = static_cast<float>(height),
-			.minDepth = 0.0f,
-			.maxDepth = 1.0f
-		};
-
-		commandBuffer.setViewport(0, viewport);
-
-		vk::Rect2D scissor = {
-			.offset = {0, 0},
-			.extent = swapchain.getSwapchainExtent()
-		};
-
-		commandBuffer.setScissor(0, scissor);
 
 		const auto vertexBuffer = models.scene.vertexBuffer;
 		const auto indexBuffer = models.scene.indexBuffer;

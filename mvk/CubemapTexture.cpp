@@ -1,63 +1,63 @@
-#include "Texture2D.h"
-#define STB_IMAGE_IMPLEMENTATION
+#include "CubemapTexture.h"
 #include "../3rdParty/stb_image.h"
 #include <string>
 
 using namespace mvk;
 
-void Texture2D::loadFromFile(Device* device,
-                             const vk::Queue transferQueue,
-                             const char* path,
-                             const vk::Format format)
+void CubemapTexture::loadFromSixFiles(Device* device,
+                                      const vk::Queue transferQueue,
+                                      const std::array<std::string, 6>
+                                      texturePaths,
+                                      const vk::Format format)
 {
 	this->ptrDevice = device;
 
-	int w, h, c;
-	const auto pixels = stbi_load(path, &w, &h, &c,
-	                              STBI_rgb_alpha);
+	const auto nbTextures = 6;
+	vk::DeviceSize imageSize = 0;
 
-	if (!pixels)
+	unsigned char* pixels = nullptr;
+
+	for (auto i = 0; i < nbTextures; i++)
 	{
-		throw std::runtime_error(std::string("Failed to load texture: ") +
-			path);
+		int w, h, c;
+		const auto p = stbi_load(texturePaths[i].c_str(), &w, &h, &c,
+		                         STBI_rgb_alpha);
+		if (i == 0)
+		{
+			this->width = static_cast<uint32_t>(w);
+			this->height = static_cast<uint32_t>(h);
+			imageSize = width * height * 4;
+			pixels = new unsigned char[imageSize * nbTextures];
+		}
+
+		if (!p)
+		{
+			throw std::
+				runtime_error(std::string("Failed to load texture: ") +
+					texturePaths[i]);
+		}
+
+		memcpy(&pixels[imageSize * i], p, imageSize);
+
+		stbi_image_free(p);
 	}
 
-	this->width = static_cast<uint32_t>(w);
-	this->height = static_cast<uint32_t>(h);
 	this->format = format;
 	this->image = copyDataToGpuImage(transferQueue, pixels,
 	                                 width, height, format);
 	createImageView();
 	createSampler();
 	createDescriptorInfo();
-
-	stbi_image_free(pixels);
 }
 
-void Texture2D::loadRaw(Device* device, const vk::Queue transferQueue,
-                        const unsigned char* pixels, const int w,
-                        const int h)
+alloc::Image CubemapTexture::copyDataToGpuImage(
+	const vk::Queue transferQueue,
+	const unsigned char* pixels,
+	const uint32_t width,
+	const uint32_t height,
+	const vk::Format format) const
 {
-	this->ptrDevice = device;
-
-	this->width = static_cast<uint32_t>(w);
-	this->height = static_cast<uint32_t>(h);
-	this->format = vk::Format::eR8G8B8A8Unorm;
-	this->image = copyDataToGpuImage(transferQueue, pixels,
-	                                 width, height, format);
-
-	createImageView();
-	createSampler();
-	createDescriptorInfo();
-}
-
-alloc::Image Texture2D::copyDataToGpuImage(const vk::Queue transferQueue,
-                                           const unsigned char* pixels,
-                                           const uint32_t width,
-                                           const uint32_t height,
-                                           const vk::Format format) const
-{
-	const vk::DeviceSize imageSize = width * height * 4;
+	const vk::DeviceSize imageSize = width * height * 4 * 6;
 	const vk::BufferCreateInfo bufferCreateInfo = {
 		.size = imageSize,
 		.usage = vk::BufferUsageFlagBits::eTransferSrc
@@ -75,11 +75,12 @@ alloc::Image Texture2D::copyDataToGpuImage(const vk::Queue transferQueue,
 	};
 
 	const vk::ImageCreateInfo imageCreateInfo = {
+		.flags = vk::ImageCreateFlagBits::eCubeCompatible,
 		.imageType = vk::ImageType::e2D,
 		.format = format,
 		.extent = imageExtent,
 		.mipLevels = 1,
-		.arrayLayers = 1,
+		.arrayLayers = 6,
 		.samples = vk::SampleCountFlagBits::e1,
 		.tiling = vk::ImageTiling::eOptimal,
 		.usage = vk::ImageUsageFlagBits::eTransferDst |
@@ -91,10 +92,10 @@ alloc::Image Texture2D::copyDataToGpuImage(const vk::Queue transferQueue,
 	const auto imageBuffer = alloc::allocateGpuOnlyImage(ptrDevice->allocator,
 	                                                     imageCreateInfo);
 
-	const vk::BufferImageCopy bufferImageCopy = {
+	vk::BufferImageCopy bufferImageCopy = {
 		.bufferOffset = 0,
-		.bufferRowLength = 0,
-		.bufferImageHeight = 0,
+		.bufferRowLength = width,
+		.bufferImageHeight = height,
 		.imageSubresource = {
 			.aspectMask = vk::ImageAspectFlagBits::eColor,
 			.mipLevel = 0,
@@ -105,37 +106,44 @@ alloc::Image Texture2D::copyDataToGpuImage(const vk::Queue transferQueue,
 		.imageExtent = imageExtent,
 	};
 
-	const vk::ImageSubresourceRange subresourceRange{
+	const vk::ImageSubresourceRange subresourceRange = {
 		.baseMipLevel = 0,
 		.levelCount = 1,
 		.baseArrayLayer = 0,
-		.layerCount = 1
+		.layerCount = 6
 	};
 
-	ptrDevice->transitionImageLayout(transferQueue, imageBuffer.image,
-	                                 vk::ImageLayout::eUndefined,
-	                                 vk::ImageLayout::eTransferDstOptimal,
-	                                 subresourceRange);
+	for (auto i = 0; i < 6; i++)
+	{
+		bufferImageCopy.imageSubresource.baseArrayLayer = i;
+		bufferImageCopy.bufferOffset = i * width * height * 4;
 
-	ptrDevice->copyCpuBufferToGpuImage(transferQueue, stagingBuffer,
-	                                   imageBuffer,
-	                                   bufferImageCopy);
+		ptrDevice->transitionImageLayout(transferQueue, imageBuffer.image,
+		                                 vk::ImageLayout::eUndefined,
+		                                 vk::ImageLayout::eTransferDstOptimal,
+		                                 subresourceRange);
 
-	ptrDevice->transitionImageLayout(transferQueue, imageBuffer.image,
-	                                 vk::ImageLayout::eTransferDstOptimal,
-	                                 vk::ImageLayout::eShaderReadOnlyOptimal,
-	                                 subresourceRange);
+		ptrDevice->copyCpuBufferToGpuImage(transferQueue, stagingBuffer,
+		                                   imageBuffer,
+		                                   bufferImageCopy);
+
+		ptrDevice->transitionImageLayout(transferQueue, imageBuffer.image,
+		                                 vk::ImageLayout::eTransferDstOptimal,
+		                                 vk::ImageLayout::
+		                                 eShaderReadOnlyOptimal,
+		                                 subresourceRange);
+	}
 
 	alloc::deallocateBuffer(ptrDevice->allocator, stagingBuffer);
 
 	return imageBuffer;
 }
 
-void Texture2D::createImageView()
+void CubemapTexture::createImageView()
 {
 	const vk::ImageViewCreateInfo imageViewCreateInfo = {
 		.image = image.image,
-		.viewType = vk::ImageViewType::e2D,
+		.viewType = vk::ImageViewType::eCube,
 		.format = format,
 		.components = vk::ComponentSwizzle::eIdentity,
 		.subresourceRange = {
@@ -143,14 +151,14 @@ void Texture2D::createImageView()
 			.baseMipLevel = 0,
 			.levelCount = 1,
 			.baseArrayLayer = 0,
-			.layerCount = 1
+			.layerCount = 6
 		}
 	};
 
 	imageView = ptrDevice->logicalDevice.createImageView(imageViewCreateInfo);
 }
 
-void Texture2D::createSampler()
+void CubemapTexture::createSampler()
 {
 	const vk::SamplerCreateInfo samplerCreateInfo = {
 		.magFilter = vk::Filter::eLinear,
@@ -173,7 +181,7 @@ void Texture2D::createSampler()
 	sampler = ptrDevice->logicalDevice.createSampler(samplerCreateInfo);
 }
 
-void Texture2D::createDescriptorInfo()
+void CubemapTexture::createDescriptorInfo()
 {
 	descriptorInfo = vk::DescriptorImageInfo{
 		.sampler = getSampler(),
@@ -182,7 +190,7 @@ void Texture2D::createDescriptorInfo()
 	};
 }
 
-void Texture2D::release() const
+void CubemapTexture::release() const
 {
 	ptrDevice->logicalDevice.destroySampler(sampler);
 	ptrDevice->logicalDevice.destroyImageView(imageView);

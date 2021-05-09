@@ -1,20 +1,14 @@
 #include "AppBase.h"
 #include "Model.h"
-#include "BaseMaterial.h"
 #include "GraphicPipeline.h"
+#include "NormalMaterial.h"
 
 class SimpleViewer : public mvk::AppBase
 {
 public:
-	struct Textures
-	{
-		mvk::Texture2D lena;
-	}
-	textures;
-
 	struct Materials
 	{
-		mvk::BaseMaterial standard;
+		mvk::NormalMaterial standard;
 	}
 	materials;
 
@@ -85,20 +79,19 @@ public:
 
 		models.plane.loadRaw(&device, transferQueue, vertices, indices);
 
-		const auto path = "assets/textures/lena.jpg";
+		materials.standard.load(&device);
 
-		textures.lena.loadFromFile(&device, transferQueue, path,
-		                           vk::Format::eR8G8B8A8Unorm);
+		const std::vector<vk::VertexInputBindingDescription> bindingDescription
+			= {
+				mvk::Vertex::getBindingDescription()
+			};
 
-		mvk::BaseMaterialDescription description;
-		description.baseColor = &textures.lena;
-
-		materials.standard.load(&device, description);
+		const auto& attributeDescriptions =
+			mvk::Vertex::getAttributeDescriptions();
 
 		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
 			mvk::Scene::getDescriptorSetLayout(&device),
 			mvk::Model::getDescriptorSetLayout(&device),
-			mvk::BaseMaterial::getDescriptorSetLayout(&device)
 		};
 
 		const auto shaderStageInfo =
@@ -106,7 +99,8 @@ public:
 
 		const mvk::GraphicPipelineCreateInfo opaquePipelineCreateInfo =
 		{
-			.extent = swapchain.getSwapchainExtent(),
+			.vertexInputBindingDescription = bindingDescription,
+			.vertexInputAttributeDescription = attributeDescriptions,
 			.renderPass = renderPass.getRenderPass(),
 			.shaderStageCreateInfos = shaderStageInfo,
 			.descriptorSetLayouts = descriptorSetLayouts,
@@ -118,7 +112,6 @@ public:
 
 	~SimpleViewer()
 	{
-		textures.lena.release();
 		models.plane.release();
 		materials.standard.release();
 		pipelines.standard.release();
@@ -162,8 +155,7 @@ public:
 		{
 			std::vector<vk::DescriptorSet> descriptorSets = {
 				scene.getDescriptorSet(0),
-				node->getDescriptorSet(),
-				materials.standard.getDescriptorSet()
+				node->getDescriptorSet()
 			};
 
 			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,

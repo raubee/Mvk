@@ -46,6 +46,18 @@ public:
 		scene.camera.setLookAt(glm::vec3(0.0f, 0.5f, 0.0f));
 		scene.camera.setDistance(1.5f);
 
+		const std::array<std::string, 6> skyboxTexturePaths = {
+			"assets/textures/skybox/right.jpg",
+			"assets/textures/skybox/left.jpg",
+			"assets/textures/skybox/top.jpg",
+			"assets/textures/skybox/bottom.jpg",
+			"assets/textures/skybox/front.jpg",
+			"assets/textures/skybox/back.jpg"
+		};
+
+		scene.setupSkybox(transferQueue, renderPass.getRenderPass(),
+			skyboxTexturePaths);
+
 		const auto modelPath = "assets/models/ganesha/ganesha.obj";
 		const auto albedoPath =
 			"assets/models/ganesha/textures/Ganesha_BaseColor.jpg";
@@ -58,8 +70,10 @@ public:
 
 		textures.albedo.loadFromFile(&device, transferQueue, albedoPath,
 		                             vk::Format::eR8G8B8A8Unorm);
+
 		textures.normal.loadFromFile(&device, transferQueue, normalPath,
 			vk::Format::eR8G8B8A8Unorm);
+
 		textures.roughness.loadFromFile(&device, transferQueue, roughnessPath,
 			vk::Format::eR8G8B8A8Unorm);
 
@@ -69,6 +83,14 @@ public:
 		description.metallicRoughness = &textures.roughness;
 
 		materials.standard.load(&device, description);
+
+		const std::vector<vk::VertexInputBindingDescription> bindingDescription
+			= {
+				mvk::Vertex::getBindingDescription()
+		};
+
+		const auto& attributeDescriptions =
+			mvk::Vertex::getAttributeDescriptions();
 
 		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
 			mvk::Scene::getDescriptorSetLayout(&device),
@@ -81,7 +103,8 @@ public:
 
 		const mvk::GraphicPipelineCreateInfo opaquePipelineCreateInfo =
 		{
-			.extent = swapchain.getSwapchainExtent(),
+			.vertexInputBindingDescription = bindingDescription,
+			.vertexInputAttributeDescription = attributeDescriptions,
 			.renderPass = renderPass.getRenderPass(),
 			.shaderStageCreateInfos = shaderStageInfo,
 			.descriptorSetLayouts = descriptorSetLayouts,
@@ -128,6 +151,26 @@ public:
 		commandBuffer.beginRenderPass(renderPassBeginInfo,
 		                              vk::SubpassContents::eInline);
 
+		const vk::Viewport viewport = {
+				.x = 0.0f,
+				.y = 0.0f,
+				.width = static_cast<float>(extent.width),
+				.height = static_cast<float>(extent.height),
+				.minDepth = 0.0f,
+				.maxDepth = 1.0f
+		};
+
+		commandBuffer.setViewport(0, viewport);
+
+		const vk::Rect2D scissor = {
+			.offset = {0, 0},
+			.extent = extent
+		};
+
+		commandBuffer.setScissor(0, scissor);
+
+		scene.renderSkybox(commandBuffer);
+
 		const auto graphicPipeline = pipelines.standard;
 		const auto pipelineLayout = graphicPipeline.getPipelineLayout();
 		const auto pipeline = graphicPipeline.getPipeline();
@@ -148,24 +191,6 @@ public:
 			                                 static_cast<uint32_t>(
 				                                 descriptorSets.size()),
 			                                 descriptorSets.data(), 0, nullptr);
-
-			vk::Viewport viewport = {
-				.x = 0.0f,
-				.y = 0.0f,
-				.width = static_cast<float>(extent.width),
-				.height = static_cast<float>(extent.height),
-				.minDepth = 0.0f,
-				.maxDepth = 1.0f
-			};
-
-			commandBuffer.setViewport(0, viewport);
-
-			vk::Rect2D scissor = {
-				.offset = {0, 0},
-				.extent = extent
-			};
-
-			commandBuffer.setScissor(0, scissor);
 
 			const auto vertexBuffer = models.ganesh.vertexBuffer;
 			const auto indexBuffer = models.ganesh.indexBuffer;

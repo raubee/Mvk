@@ -6,12 +6,16 @@ namespace mvk
 {
 	struct GraphicPipelineCreateInfo
 	{
-		vk::Extent2D extent;
+		std::vector<vk::VertexInputBindingDescription>
+		vertexInputBindingDescription;
+		std::vector<vk::VertexInputAttributeDescription>
+		vertexInputAttributeDescription;
 		vk::RenderPass renderPass;
 		std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos;
 		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts;
 		vk::FrontFace frontFace;
-		bool alpha;
+		vk::Bool32 alpha = vk::Bool32(false);
+		vk::Bool32 depthTest = vk::Bool32(true);
 	};
 
 	class GraphicPipeline
@@ -20,7 +24,6 @@ namespace mvk
 
 		vk::Pipeline pipeline;
 		vk::PipelineLayout pipelineLayout;
-		vk::DescriptorSetLayout descriptorSetLayout;
 
 	public:
 
@@ -28,11 +31,6 @@ namespace mvk
 		           GraphicPipelineCreateInfo createInfo);
 
 		void release() const;
-
-		vk::DescriptorSetLayout getDescriptorSetLayout() const
-		{
-			return descriptorSetLayout;
-		}
 
 		vk::Pipeline getPipeline() const { return pipeline; }
 		vk::PipelineLayout getPipelineLayout() const { return pipelineLayout; }

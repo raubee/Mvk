@@ -9,6 +9,8 @@ class MultiViewer : public mvk::AppBase
 	struct Textures
 	{
 		mvk::Texture2D albedo;
+		mvk::Texture2D normal;
+		mvk::Texture2D roughness;
 	}
 	textures;
 
@@ -36,19 +38,38 @@ class MultiViewer : public mvk::AppBase
 	void loadGanesh()
 	{
 		const auto modelPath = "assets/models/ganesha/ganesha.obj";
+		const auto albedoPath =
+			"assets/models/ganesha/textures/Ganesha_BaseColor.jpg";
+		const auto normalPath =
+			"assets/models/ganesha/textures/Ganesha_Normal.jpg";
+		const auto roughnessPath =
+			"assets/models/ganesha/textures/Ganesha_Roughness.jpg";
 
 		models.ganesh.loadFromFile(&device, transferQueue, modelPath);
 
-		const auto albedoPath =
-			"assets/models/ganesha/textures/Ganesha_BaseColor.jpg";
-
 		textures.albedo.loadFromFile(&device, transferQueue, albedoPath,
-		                             vk::Format::eR8G8B8A8Srgb);
+			vk::Format::eR8G8B8A8Unorm);
+
+		textures.normal.loadFromFile(&device, transferQueue, normalPath,
+			vk::Format::eR8G8B8A8Unorm);
+
+		textures.roughness.loadFromFile(&device, transferQueue, roughnessPath,
+			vk::Format::eR8G8B8A8Unorm);
 
 		mvk::BaseMaterialDescription description;
 		description.baseColor = &textures.albedo;
+		description.normal = &textures.normal;
+		description.metallicRoughness = &textures.roughness;
 
 		materials.standard.load(&device, description);
+
+		const std::vector<vk::VertexInputBindingDescription> bindingDescription
+			= {
+				mvk::Vertex::getBindingDescription()
+		};
+
+		const auto& attributeDescriptions =
+			mvk::Vertex::getAttributeDescriptions();
 
 		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
 			mvk::Scene::getDescriptorSetLayout(&device),
@@ -61,7 +82,8 @@ class MultiViewer : public mvk::AppBase
 
 		const mvk::GraphicPipelineCreateInfo opaquePipelineCreateInfo =
 		{
-			.extent = swapchain.getSwapchainExtent(),
+			.vertexInputBindingDescription = bindingDescription,
+			.vertexInputAttributeDescription = attributeDescriptions,
 			.renderPass = renderPass.getRenderPass(),
 			.shaderStageCreateInfos = shaderStageInfo,
 			.descriptorSetLayouts = descriptorSetLayouts,
@@ -118,6 +140,14 @@ class MultiViewer : public mvk::AppBase
 
 		materials.normal.load(&device);
 
+		const std::vector<vk::VertexInputBindingDescription> bindingDescription
+			= {
+				mvk::Vertex::getBindingDescription()
+		};
+
+		const auto& attributeDescriptions =
+			mvk::Vertex::getAttributeDescriptions();
+
 		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
 			mvk::Scene::getDescriptorSetLayout(&device),
 			mvk::Model::getDescriptorSetLayout(&device)
@@ -128,7 +158,8 @@ class MultiViewer : public mvk::AppBase
 
 		const mvk::GraphicPipelineCreateInfo opaquePipelineCreateInfo =
 		{
-			.extent = swapchain.getSwapchainExtent(),
+			.vertexInputBindingDescription = bindingDescription,
+			.vertexInputAttributeDescription = attributeDescriptions,
 			.renderPass = renderPass.getRenderPass(),
 			.shaderStageCreateInfos = shaderStageInfo,
 			.descriptorSetLayouts = descriptorSetLayouts,
@@ -150,6 +181,18 @@ public:
 		scene.camera.setLookAt(glm::vec3(0.0f, 0.5f, 0.0f));
 		scene.camera.setDistance(2.0f);
 
+		const std::array<std::string, 6> skyboxTexturePaths = {
+			"assets/textures/skybox/right.jpg",
+			"assets/textures/skybox/left.jpg",
+			"assets/textures/skybox/top.jpg",
+			"assets/textures/skybox/bottom.jpg",
+			"assets/textures/skybox/front.jpg",
+			"assets/textures/skybox/back.jpg"
+		};
+
+		scene.setupSkybox(transferQueue, renderPass.getRenderPass(),
+
+		skyboxTexturePaths);
 		loadGanesh();
 		loadPlane();
 	}
@@ -157,6 +200,8 @@ public:
 	~MultiViewer()
 	{
 		textures.albedo.release();
+		textures.normal.release();
+		textures.roughness.release();
 		models.ganesh.release();
 		models.plane.release();
 		materials.standard.release();
@@ -209,6 +254,8 @@ public:
 		};
 
 		commandBuffer.setScissor(0, scissor);
+
+		scene.renderSkybox(commandBuffer);
 
 		drawGanesh(commandBuffer);
 		drawPlane(commandBuffer);

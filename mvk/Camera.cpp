@@ -83,6 +83,7 @@ void Camera::rotate(const glm::vec3 rotation)
 		this->theta += rotation.x;
 		this->phi += rotation.y;
 	}
+
 	updateMatrix();
 }
 

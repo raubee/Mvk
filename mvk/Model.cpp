@@ -112,13 +112,13 @@ void Model::createDescriptorPool()
 
 void Model::createDescriptorSets()
 {
-	const auto descriptorSetAllocateInfo = vk::DescriptorSetAllocateInfo{
+	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo = {
 		.descriptorPool = descriptorPool,
 		.descriptorSetCount = 1,
 		.pSetLayouts = &descriptorSetLayout
 	};
 
-	for (auto node : nodes)
+	for (const auto& node : nodes)
 	{
 		node->descriptorSets = ptrDevice->logicalDevice.
 		                                  allocateDescriptorSets(
@@ -132,17 +132,17 @@ void Model::createDescriptorSets()
 
 void Model::release() const
 {
-	for (auto node : nodes)
+	for (const auto& node : nodes)
 	{
 		node->release(ptrDevice);
 	}
 
-	for (auto texture : textures)
+	for (const auto& texture : textures)
 	{
 		texture->release();
 	}
 
-	for (auto material : materials)
+	for (const auto& material : materials)
 	{
 		material->release();
 	}

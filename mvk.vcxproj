@@ -154,11 +154,14 @@
     <None Include="shaders\base.frag" />
     <None Include="shaders\base.vert" />
     <None Include="shaders\norm.frag" />
+    <None Include="shaders\skybox.frag" />
+    <None Include="shaders\skybox.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mvk\AppBase.h" />
     <ClInclude Include="mvk\BaseMaterial.h" />
     <ClInclude Include="mvk\Camera.h" />
+    <ClInclude Include="mvk\CubemapTexture.h" />
     <ClInclude Include="mvk\Device.hpp" />
     <ClInclude Include="mvk\GraphicPipeline.h" />
     <ClInclude Include="mvk\Material.h" />
@@ -167,6 +170,7 @@
     <ClInclude Include="mvk\RenderPass.h" />
     <ClInclude Include="mvk\Scene.h" />
     <ClInclude Include="mvk\Shader.h" />
+    <ClInclude Include="mvk\Skybox.h" />
     <ClInclude Include="mvk\SwapChain.h" />
     <ClInclude Include="mvk\SwapchainFrame.h" />
     <ClInclude Include="mvk\Texture2D.h" />
@@ -179,6 +183,7 @@
     <ClCompile Include="mvk\AppBase.cpp" />
     <ClCompile Include="mvk\BaseMaterial.cpp" />
     <ClCompile Include="mvk\Camera.cpp" />
+    <ClCompile Include="mvk\CubemapTexture.cpp" />
     <ClCompile Include="mvk\GraphicPipeline.cpp" />
     <ClCompile Include="mvk\Material.cpp" />
     <ClCompile Include="mvk\Model.cpp" />
@@ -186,6 +191,7 @@
     <ClCompile Include="mvk\RenderPass.cpp" />
     <ClCompile Include="mvk\Scene.cpp" />
     <ClCompile Include="mvk\Shader.cpp" />
+    <ClCompile Include="mvk\Skybox.cpp" />
     <ClCompile Include="mvk\SwapChain.cpp" />
     <ClCompile Include="mvk\SwapchainFrame.cpp" />
     <ClCompile Include="mvk\Texture2D.cpp" />
