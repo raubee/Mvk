@@ -8,14 +8,26 @@ const float M_PI = 3.141592653589793;
 layout(location = 0) in vec3 inWordPosition;
 layout(location = 1) in vec3 inEyePosition;
 layout(location = 2) in vec3 inFragColor;
-layout(location = 3) in vec2 inUV0;
-layout(location = 4) in vec3 inNormal;
+layout(location = 3) in vec3 inNormal;
+layout(location = 4) in vec2 inUV0;
+layout(location = 5) in vec2 inUV1;
 
 layout(location = 0) out vec4 outColor;
+
+layout(binding = 1) uniform samplerCube envMap;
 
 layout(set = 2, binding = 0) uniform sampler2D baseColorMap;
 layout(set = 2, binding = 1) uniform sampler2D normalMap;
 layout(set = 2, binding = 2) uniform sampler2D metallicRoughnessMap;
+
+layout(push_constant) uniform MaterialConstants{
+	vec4 baseColorFactor;
+	float metallicFactor;
+	float roughnessFactor;
+	int baseTextureSet;
+	int normalTextureSet;
+	int metallicRoughnessTextureSet;
+};
  
  vec3 Uncharted2Tonemap(vec3 color)
 {
@@ -66,8 +78,9 @@ void main() {
 
 	outColor = vec4(0);
 
-	vec4 baseColor = sRgbToLinear(texture(baseColorMap, inUV0));
-	vec4 mR = texture(metallicRoughnessMap, inUV0);
+	vec4 baseColor = baseTextureSet > -1 ? sRgbToLinear(texture(baseColorMap, inUV0)) * baseColorFactor : baseColorFactor;
+	vec4 omr = vec4(1, roughnessFactor, metallicFactor, 0);
+	vec4 mR = metallicRoughnessTextureSet > -1 ? texture(metallicRoughnessMap, inUV0) * omr : omr;
 
 	float occlusion = mR.x;
 	float roughness = mR.y;
@@ -75,7 +88,7 @@ void main() {
    
 	vec3 lightDir = normalize(vec3(0., -.5, -.5));
 
-	vec3 n = getNormal();
+	vec3 n = normalTextureSet > -1 ? getNormal() : inNormal;
 	vec3 v = normalize(inEyePosition - inWordPosition); // surface to eye
 	vec3 l = -lightDir; // surface to light
 	vec3 h = normalize(l+v); // half vector
@@ -100,6 +113,7 @@ void main() {
 	// Micorfacet Distribution
 	float d = (dotH * a - dotH) * dotH + 1.0;
 	float D = a / (M_PI * d * d);
+	//D = pow(dotH, 128.0);
 
 	// Get Diffuse for dielectric parts and set to 0 for metallic
 	vec3 diffuse = mix(baseColor.rgb, vec3(0), metallic);
@@ -112,8 +126,12 @@ void main() {
 	//specular = pow(dotV, 128.0) * baseColor.rgb + baseColor.rgb * 0.2;
 	//outColor.rgb = dotL * diffuse  + specular;
 	outColor.rgb = dotL * (diffuse  + specular);
+	
+	// Add IBl Contribution
+	vec3 refl = -normalize(reflect(v, n));
+	refl.y *= -1.0f;
+	outColor.rgb += sRgbToLinear(texture(envMap, refl)).rgb * 0.05 * (1.-roughness) +  baseColor.rgb * 0.2;	
 	outColor = mix(outColor * 0.1, outColor, occlusion);
 	outColor.a = baseColor.a;
-	//outColor = baseColor;
 	//outColor = tonemap(outColor);
 }

@@ -13,7 +13,9 @@ namespace mvk
 		vk::RenderPass renderPass;
 		std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos;
 		std::vector<vk::DescriptorSetLayout> descriptorSetLayouts;
+		std::vector<vk::PushConstantRange> pushConstantRanges;
 		vk::FrontFace frontFace;
+		vk::CullModeFlagBits cullMode = vk::CullModeFlagBits::eBack;
 		vk::Bool32 alpha = vk::Bool32(false);
 		vk::Bool32 depthTest = vk::Bool32(true);
 	};

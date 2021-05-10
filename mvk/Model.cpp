@@ -43,7 +43,7 @@ void Node::createLocalMatrixBuffer(Device* device)
 {
 	const auto size = sizeof(glm::mat4);
 
-	const vk::BufferCreateInfo bufferCreateInfo = {
+	const vk::BufferCreateInfo bufferCreateInfo{
 		.size = static_cast<vk::DeviceSize>(size),
 		.usage = vk::BufferUsageFlagBits::eUniformBuffer,
 	};
@@ -54,14 +54,14 @@ void Node::createLocalMatrixBuffer(Device* device)
 
 void Node::writeDescriptorSets(Device* device)
 {
-	const auto descriptorBufferInfo = vk::DescriptorBufferInfo{
+	const vk::DescriptorBufferInfo descriptorBufferInfo{
 		.buffer = matrixBuffer.buffer,
 		.range = sizeof(NodeUBO)
 	};
 
 	for (const auto& descriptorSet : descriptorSets)
 	{
-		const auto writeDescriptorSet = vk::WriteDescriptorSet{
+		const vk::WriteDescriptorSet writeDescriptorSet{
 			.dstSet = descriptorSet,
 			.dstBinding = 0,
 			.dstArrayElement = 0,
@@ -96,13 +96,13 @@ void Model::setupDescriptors()
 
 void Model::createDescriptorPool()
 {
-	vk::DescriptorPoolSize descriptorPoolSize = {
+	vk::DescriptorPoolSize descriptorPoolSize{
 		.descriptorCount = static_cast<uint32_t>(nodes.size())
 	};
 
-	const vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+	const vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{
 		.maxSets = static_cast<uint32_t>(nodes.size()),
-		.poolSizeCount =1,
+		.poolSizeCount = 1,
 		.pPoolSizes = &descriptorPoolSize
 	};
 
@@ -112,7 +112,7 @@ void Model::createDescriptorPool()
 
 void Model::createDescriptorSets()
 {
-	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{
 		.descriptorPool = descriptorPool,
 		.descriptorSetCount = 1,
 		.pSetLayouts = &descriptorSetLayout
@@ -332,7 +332,7 @@ void Model::loadFromObjFile(const char* filePath, std::vector<Vertex>& vertices,
 
 		for (const auto& index : shape.mesh.indices)
 		{
-			mvk::Vertex vertex{};
+			Vertex vertex;
 
 			vertex.position = {
 				attribute.vertices[3 * index.vertex_index + 0],
@@ -447,28 +447,52 @@ void Model::loadGltfNode(Node* parent,
 
 			pNode->vertexCount = static_cast<uint32_t>(posAccessor.count);
 
-			// UVs
-			const float* uv1Data = nullptr;
-			uint32_t uv1Stride = 0;
+			// UV0 
+			const float* uv0Data = nullptr;
+			uint32_t uv0Stride = 0;
 
 			if (primitive.attributes.find("TEXCOORD_0") != primitive
 			                                               .attributes.end())
 			{
-				const auto& uv1Accessor =
+				const auto& accessor =
 					model.accessors[primitive
 					                .attributes.find("TEXCOORD_0")->second];
 
-				const auto& uv1BufferView =
-					model.bufferViews[uv1Accessor.bufferView];
+				const auto& bufferView =
+					model.bufferViews[accessor.bufferView];
+
+				uv0Stride =
+					accessor.ByteStride(bufferView)
+						? accessor.ByteStride(bufferView) / sizeof(float)
+						: tinygltf::GetComponentSizeInBytes(TINYGLTF_TYPE_VEC2);
+
+				uv0Data = reinterpret_cast<const float*>(&model.buffers[
+					bufferView.buffer].data[
+					accessor.byteOffset + bufferView.byteOffset]);
+			}
+
+			// UV1
+			const float* uv1Data = nullptr;
+			uint32_t uv1Stride = 0;
+
+			if (primitive.attributes.find("TEXCOORD_1") != primitive
+			                                               .attributes.end())
+			{
+				const auto& accessor =
+					model.accessors[primitive
+					                .attributes.find("TEXCOORD_1")->second];
+
+				const auto& bufferView =
+					model.bufferViews[accessor.bufferView];
 
 				uv1Stride =
-					uv1Accessor.ByteStride(uv1BufferView)
-						? uv1Accessor.ByteStride(uv1BufferView) / sizeof(float)
+					accessor.ByteStride(bufferView)
+						? accessor.ByteStride(bufferView) / sizeof(float)
 						: tinygltf::GetComponentSizeInBytes(TINYGLTF_TYPE_VEC2);
 
 				uv1Data = reinterpret_cast<const float*>(&model.buffers[
-					uv1BufferView.buffer].data[
-					uv1Accessor.byteOffset + uv1BufferView.byteOffset]);
+					bufferView.buffer].data[
+					accessor.byteOffset + bufferView.byteOffset]);
 			}
 
 			// Normal
@@ -478,22 +502,22 @@ void Model::loadGltfNode(Node* parent,
 			if (primitive.attributes.find("NORMAL") != primitive
 			                                           .attributes.end())
 			{
-				const auto& normalAccessor =
+				const auto& accessor =
 					model.accessors[primitive
 					                .attributes.find("NORMAL")->second];
 
-				const auto& normalBufferView =
-					model.bufferViews[normalAccessor.bufferView];
+				const auto& bufferView =
+					model.bufferViews[accessor.bufferView];
 
 				normalStride =
-					normalAccessor.ByteStride(normalBufferView)
-						? normalAccessor.ByteStride(normalBufferView) / sizeof(
+					accessor.ByteStride(bufferView)
+						? accessor.ByteStride(bufferView) / sizeof(
 							float)
 						: tinygltf::GetComponentSizeInBytes(TINYGLTF_TYPE_VEC3);
 
 				normalData = reinterpret_cast<const float*>(&model.buffers[
-					normalBufferView.buffer].data[
-					normalAccessor.byteOffset + normalBufferView.byteOffset]);
+					bufferView.buffer].data[
+					accessor.byteOffset + bufferView.byteOffset]);
 			}
 
 			// Create vertices
@@ -506,9 +530,12 @@ void Model::loadGltfNode(Node* parent,
 						          ? glm::make_vec3(
 							          &normalData[v * normalStride])
 						          : glm::vec3(0),
-					.texCoord = uv1Data
-						            ? glm::make_vec2(&uv1Data[v * uv1Stride])
-						            : glm::vec2(0)
+					.texCoord = uv0Data
+						            ? glm::make_vec2(&uv0Data[v * uv0Stride])
+						            : glm::vec2(0),
+					.texCoord1 = uv1Data
+						             ? glm::make_vec2(&uv1Data[v * uv1Stride])
+						             : glm::vec2(0)
 				};
 
 				vertices.push_back(vertex);
@@ -571,17 +598,34 @@ void Model::loadTextures(const vk::Queue transferQueue,
 	{
 		auto path = folder + "/" + image.uri;
 
-		auto texture = new Texture2D;
+		Texture2D* texture;
 
-		try
+		if (image.width > -1 && image.height > -1)
 		{
-			texture->loadRaw(ptrDevice, transferQueue,
-			                 image.image.data(), image.width, image.height);
+			texture = new Texture2D;
+
+			if (image.bufferView > -1)
+			{
+				// TODO: load embedded textures
+			}
+			else
+			{
+				try
+				{
+					texture->loadRaw(ptrDevice, transferQueue,
+					                 image.image.data(), image.width,
+					                 image.height);
+				}
+				catch (std::runtime_error e)
+				{
+					std::cerr << "Failed to load: " << path;
+					continue;
+				}
+			}
 		}
-		catch (std::runtime_error e)
+		else
 		{
-			std::cerr << "Failed to load: " << path;
-			continue;
+			texture = Texture2D::empty;
 		}
 
 		textures.push_back(texture);
@@ -594,7 +638,7 @@ void Model::loadMaterials(const tinygltf::Model model)
 	{
 		AlphaMode alphaMode;
 		auto alpha = mat.alphaMode;
-		
+
 		if (alpha == "BLEND")
 		{
 			alphaMode = AlphaMode::ALPHA_BLEND;
@@ -608,9 +652,23 @@ void Model::loadMaterials(const tinygltf::Model model)
 			alphaMode = AlphaMode::NO_ALPHA;
 		}
 
-		BaseMaterialDescription materialDescription = {
+		BaseMaterial::BaseMaterialDescription materialDescription = {
 			.alphaMode = alphaMode
 		};
+
+		// Constants
+		materialDescription.constants.baseColorFactor =
+			glm::vec4(
+				mat.pbrMetallicRoughness.baseColorFactor[0],
+				mat.pbrMetallicRoughness.baseColorFactor[1],
+				mat.pbrMetallicRoughness.baseColorFactor[2],
+				mat.pbrMetallicRoughness.baseColorFactor[3]);
+
+		materialDescription.constants.metallicFactor =
+			mat.pbrMetallicRoughness.metallicFactor;
+
+		materialDescription.constants.roughnessFactor =
+			mat.pbrMetallicRoughness.roughnessFactor;
 
 		// BaseColor
 		if (mat.pbrMetallicRoughness.baseColorTexture.index > -1)
@@ -618,6 +676,7 @@ void Model::loadMaterials(const tinygltf::Model model)
 			const auto& id =
 				model.textures[mat.pbrMetallicRoughness.baseColorTexture.index];
 			materialDescription.baseColor = textures[id.source];
+			materialDescription.constants.baseTextureSet = 0;
 		}
 
 		// Normal
@@ -625,6 +684,7 @@ void Model::loadMaterials(const tinygltf::Model model)
 		{
 			const auto& id = model.textures[mat.normalTexture.index];
 			materialDescription.normal = textures[id.source];
+			materialDescription.constants.normalTextureSet = 0;
 		}
 
 		// MetallicRoughness
@@ -634,6 +694,7 @@ void Model::loadMaterials(const tinygltf::Model model)
 				model.textures[
 					mat.pbrMetallicRoughness.metallicRoughnessTexture.index];
 			materialDescription.metallicRoughness = textures[id.source];
+			materialDescription.constants.metallicRoughnessTextureSet = 0;
 		}
 
 		auto material = new BaseMaterial;

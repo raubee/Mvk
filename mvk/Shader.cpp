@@ -32,7 +32,7 @@ Shader::Shader(Device* device, const std::string& filename,
 
 	auto shaderCode = readFile(filename);
 
-	const vk::ShaderModuleCreateInfo shaderModuleCreateInfo = {
+	const vk::ShaderModuleCreateInfo shaderModuleCreateInfo{
 		.codeSize = shaderCode.size(),
 		.pCode = reinterpret_cast<const uint32_t*>(shaderCode.data()),
 	};
@@ -40,7 +40,7 @@ Shader::Shader(Device* device, const std::string& filename,
 	shaderModule =
 		device->logicalDevice.createShaderModule(shaderModuleCreateInfo);
 
-	pipelineShaderStageCreateInfo = vk::PipelineShaderStageCreateInfo{
+	pipelineShaderStageCreateInfo = {
 		.stage = stageFlagBits,
 		.module = shaderModule,
 		.pName = "main"

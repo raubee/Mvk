@@ -15,7 +15,8 @@ namespace mvk
 
 		void createImageView(vk::Image image, vk::Format format);
 
-		void createFramebuffer(vk::ImageView depthImageView,
+		void createFramebuffer(vk::ImageView colorImageView,
+		                       vk::ImageView depthImageView,
 		                       vk::RenderPass renderPass,
 		                       vk::Extent2D extent);
 
@@ -26,7 +27,8 @@ namespace mvk
 		            vk::RenderPass renderPass,
 		            vk::Format swapchainFormat,
 		            vk::Extent2D swapchainExtent,
-		            vk::ImageView depthImage);
+		            vk::ImageView colorImageView,
+		            vk::ImageView depthImageView);
 
 		void release() const;
 

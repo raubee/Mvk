@@ -12,6 +12,7 @@ namespace mvk
 		glm::vec3 color; // 1
 		glm::vec3 normal; // 2 
 		glm::vec2 texCoord; // 3
+		glm::vec2 texCoord1; // 4
 
 		static vk::VertexInputBindingDescription getBindingDescription()
 		{
@@ -56,6 +57,13 @@ namespace mvk
 						.binding = 0,
 						.format = vk::Format::eR32G32Sfloat,
 						.offset = offsetof(Vertex, texCoord)
+					},
+					// UV0
+					{
+						.location = 4,
+						.binding = 0,
+						.format = vk::Format::eR32G32Sfloat,
+						.offset = offsetof(Vertex, texCoord1)
 					}
 				};
 

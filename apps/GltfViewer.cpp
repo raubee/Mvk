@@ -5,6 +5,8 @@
 
 class GltfViewer : public mvk::AppBase
 {
+	mvk::Skybox skybox;
+
 	struct Models
 	{
 		mvk::Model scene;
@@ -20,7 +22,8 @@ class GltfViewer : public mvk::AppBase
 
 public:
 	GltfViewer() : AppBase(mvk::AppInfo{
-		.appName = "GltfViewer"
+		.appName = "GltfViewer",
+		//.fullscreen = true
 	})
 	{
 		scene.camera.setPerspective(45.0f, float(width) / float(height),
@@ -41,8 +44,10 @@ public:
 			"assets/textures/skybox/back.jpg"
 		};
 
-		scene.setupSkybox(transferQueue, renderPass.getRenderPass(),
-		                  skyboxTexturePaths);
+		skybox.create(&device, transferQueue, renderPass.renderPass,
+		              skyboxTexturePaths);
+
+		scene.setup(&device, &skybox);
 
 		const auto modelPath = "assets/models/flightHelmet/FlightHelmet.gltf";
 		//const auto modelPath = "assets/models/scifiHelmet/SciFiHelmet.gltf";
@@ -61,9 +66,13 @@ public:
 			mvk::Vertex::getAttributeDescriptions();
 
 		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
-			mvk::Scene::getDescriptorSetLayout(&device),
+			scene.descriptorSetLayout,
 			mvk::Model::getDescriptorSetLayout(&device),
 			mvk::BaseMaterial::getDescriptorSetLayout(&device)
+		};
+
+		const std::vector<vk::PushConstantRange> pushConstantRanges = {
+			mvk::BaseMaterial::getPushConstantRange()
 		};
 
 		const auto shaderStageInfo =
@@ -73,9 +82,10 @@ public:
 		{
 			.vertexInputBindingDescription = bindingDescription,
 			.vertexInputAttributeDescription = attributeDescriptions,
-			.renderPass = renderPass.getRenderPass(),
+			.renderPass = renderPass.renderPass,
 			.shaderStageCreateInfos = shaderStageInfo,
 			.descriptorSetLayouts = descriptorSetLayouts,
+			.pushConstantRanges = pushConstantRanges,
 			.frontFace = vk::FrontFace::eCounterClockwise
 		};
 
@@ -85,9 +95,10 @@ public:
 		{
 			.vertexInputBindingDescription = bindingDescription,
 			.vertexInputAttributeDescription = attributeDescriptions,
-			.renderPass = renderPass.getRenderPass(),
+			.renderPass = renderPass.renderPass,
 			.shaderStageCreateInfos = shaderStageInfo,
 			.descriptorSetLayouts = descriptorSetLayouts,
+			.pushConstantRanges = pushConstantRanges,
 			.frontFace = vk::FrontFace::eCounterClockwise,
 			.alpha = true
 		};
@@ -97,6 +108,7 @@ public:
 
 	~GltfViewer()
 	{
+		skybox.release();
 		models.scene.release();
 		pipelines.opaque.release();
 		pipelines.alpha.release();
@@ -117,7 +129,7 @@ public:
 		clearValues[1].setDepthStencil({1.0f, 0});
 
 		const vk::RenderPassBeginInfo renderPassBeginInfo = {
-			.renderPass = renderPass.getRenderPass(),
+			.renderPass = renderPass.renderPass,
 			.framebuffer = framebuffer,
 			.renderArea = {
 				.offset = {0, 0},
@@ -200,6 +212,11 @@ public:
 		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
 		                                 pipelineLayout, 0, descriptorCount,
 		                                 descriptorSets.data(), 0, nullptr);
+
+		commandBuffer.pushConstants(pipelineLayout,
+		                            vk::ShaderStageFlagBits::eFragment,
+		                            0, sizeof(mvk::BaseMaterial::PushConstants),
+		                            &material->constants);
 
 		const auto vertexBuffer = models.scene.vertexBuffer;
 		const auto indexBuffer = models.scene.indexBuffer;

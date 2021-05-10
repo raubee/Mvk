@@ -9,7 +9,8 @@ void SwapChain::create(Device* device,
 	this->ptrDevice = device;
 
 	createSwapChainKHR(surface);
-	createDepthImageView(transferQueue);
+	createColorImageTarget(transferQueue);
+	createDepthImageTarget(transferQueue);
 }
 
 void SwapChain::createSwapChainKHR(const vk::SurfaceKHR surface)
@@ -22,12 +23,12 @@ void SwapChain::createSwapChainKHR(const vk::SurfaceKHR surface)
 
 	size = capabilities.capabilities.minImageCount + 1;
 	extent = capabilities.capabilities.currentExtent;
-	frameFormat = selectSwapchainFormat(capabilities.formats);
+	colorFormat = selectSwapchainFormat(capabilities.formats);
 
-	const vk::SwapchainCreateInfoKHR swapchainCreateInfoKhr = {
+	const vk::SwapchainCreateInfoKHR swapchainCreateInfoKhr{
 		.surface = surface,
 		.minImageCount = size,
-		.imageFormat = frameFormat,
+		.imageFormat = colorFormat,
 		.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear,
 		.imageExtent = extent,
 		.imageArrayLayers = 1,
@@ -43,9 +44,121 @@ void SwapChain::createSwapChainKHR(const vk::SurfaceKHR surface)
 		ptrDevice->logicalDevice.createSwapchainKHR(swapchainCreateInfoKhr);
 }
 
+void SwapChain::createColorImageTarget(const vk::Queue transferQueue)
+{
+	const vk::ImageCreateInfo imageCreateInfo{
+		.imageType = vk::ImageType::e2D,
+		.format = colorFormat,
+		.extent{
+			.width = extent.width,
+			.height = extent.height,
+			.depth = 1,
+		},
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = ptrDevice->multiSampling,
+		.tiling = vk::ImageTiling::eOptimal,
+		.usage = vk::ImageUsageFlagBits::eTransientAttachment |
+		vk::ImageUsageFlagBits::eColorAttachment,
+		.sharingMode = vk::SharingMode::eExclusive
+	};
+
+	colorImage =
+		alloc::allocateGpuOnlyImage(ptrDevice->allocator, imageCreateInfo);
+
+	const vk::ImageSubresourceRange subresourceRange{
+		.baseMipLevel = 0,
+		.levelCount = 1,
+		.baseArrayLayer = 0,
+		.layerCount = 1
+	};
+
+	const vk::ImageViewCreateInfo imageViewCreateInfo{
+		.image = colorImage.image,
+		.viewType = vk::ImageViewType::e2D,
+		.format = colorFormat,
+		.components{
+			.r = vk::ComponentSwizzle::eIdentity,
+			.g = vk::ComponentSwizzle::eIdentity,
+			.b = vk::ComponentSwizzle::eIdentity,
+			.a = vk::ComponentSwizzle::eIdentity,
+		},
+		.subresourceRange{
+			.aspectMask = vk::ImageAspectFlagBits::eColor,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1
+		},
+	};
+
+	colorImageView =
+		ptrDevice->logicalDevice.createImageView(imageViewCreateInfo);
+}
+
+void SwapChain::createDepthImageTarget(const vk::Queue transferQueue)
+{
+	depthFormat = vk::Format::eD32Sfloat;
+
+	const vk::ImageCreateInfo imageCreateInfo{
+		.imageType = vk::ImageType::e2D,
+		.format = depthFormat,
+		.extent{
+			.width = extent.width,
+			.height = extent.height,
+			.depth = 1,
+		},
+		.mipLevels = 1,
+		.arrayLayers = 1,
+		.samples = ptrDevice->multiSampling,
+		.tiling = vk::ImageTiling::eOptimal,
+		.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
+		.sharingMode = vk::SharingMode::eExclusive,
+		.initialLayout = vk::ImageLayout::eUndefined
+	};
+
+	depthImage = mvk::alloc::allocateGpuOnlyImage(ptrDevice->allocator,
+	                                              imageCreateInfo);
+
+	const vk::ImageSubresourceRange subresourceRange{
+		.baseMipLevel = 0,
+		.levelCount = 1,
+		.baseArrayLayer = 0,
+		.layerCount = 1
+	};
+
+	ptrDevice->transitionImageLayout(transferQueue, depthImage.image,
+	                                 vk::ImageLayout::eUndefined,
+	                                 vk::ImageLayout::
+	                                 eDepthStencilAttachmentOptimal,
+	                                 subresourceRange);
+
+	const vk::ImageViewCreateInfo imageViewCreateInfo{
+		.image = depthImage.image,
+		.viewType = vk::ImageViewType::e2D,
+		.format = depthFormat,
+		.components{
+			.r = vk::ComponentSwizzle::eIdentity,
+			.g = vk::ComponentSwizzle::eIdentity,
+			.b = vk::ComponentSwizzle::eIdentity,
+			.a = vk::ComponentSwizzle::eIdentity,
+		},
+		.subresourceRange{
+			.aspectMask = vk::ImageAspectFlagBits::eDepth,
+			.baseMipLevel = 0,
+			.levelCount = 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1
+		},
+	};
+
+	depthImageView =
+		ptrDevice->logicalDevice.createImageView(imageViewCreateInfo);
+}
+
 void SwapChain::createCommandBuffers()
 {
-	const vk::CommandBufferAllocateInfo commandBufferAllocateInfo = {
+	const vk::CommandBufferAllocateInfo commandBufferAllocateInfo{
 		.commandPool = ptrDevice->commandPool,
 		.level = vk::CommandBufferLevel::ePrimary,
 		.commandBufferCount = static_cast<uint32_t>(size)
@@ -73,7 +186,7 @@ void SwapChain::createSwapchainFrames(const vk::RenderPass renderPass)
 	for (auto i = 0; i < swapchainFrames.size(); i++)
 	{
 		swapchainFrames[i].create(ptrDevice, swapchainImages[i], renderPass,
-		                          frameFormat, extent,
+		                          colorFormat, extent, colorImageView,
 		                          depthImageView);
 	}
 }
@@ -89,68 +202,10 @@ void SwapChain::release() const
 
 		ptrDevice->logicalDevice.destroyImageView(depthImageView);
 		ptrDevice->destroyImage(depthImage);
+		ptrDevice->logicalDevice.destroyImageView(colorImageView);
+		ptrDevice->destroyImage(colorImage);
 		ptrDevice->logicalDevice.destroySwapchainKHR(swapchain);
 	}
-}
-
-void SwapChain::createDepthImageView(const vk::Queue transferQueue)
-{
-	depthFormat = vk::Format::eD32Sfloat;
-
-	const vk::ImageCreateInfo imageCreateInfo = {
-		.imageType = vk::ImageType::e2D,
-		.format = depthFormat,
-		.extent = {
-			.width = extent.width,
-			.height = extent.height,
-			.depth = 1,
-		},
-		.mipLevels = 1,
-		.arrayLayers = 1,
-		.samples = vk::SampleCountFlagBits::e1,
-		.tiling = vk::ImageTiling::eOptimal,
-		.usage = vk::ImageUsageFlagBits::eDepthStencilAttachment,
-		.sharingMode = vk::SharingMode::eExclusive,
-		.initialLayout = vk::ImageLayout::eUndefined
-	};
-
-	depthImage = mvk::alloc::allocateGpuOnlyImage(ptrDevice->allocator,
-	                                              imageCreateInfo);
-
-	const vk::ImageSubresourceRange subresourceRange{
-		.baseMipLevel = 0,
-		.levelCount = 1,
-		.baseArrayLayer = 0,
-		.layerCount = 1
-	};
-
-	ptrDevice->transitionImageLayout(transferQueue, depthImage.image,
-	                                 vk::ImageLayout::eUndefined,
-	                                 vk::ImageLayout::
-	                                 eDepthStencilAttachmentOptimal,
-	                                 subresourceRange);
-
-	const vk::ImageViewCreateInfo imageViewCreateInfo = {
-		.image = depthImage.image,
-		.viewType = vk::ImageViewType::e2D,
-		.format = depthFormat,
-		.components = {
-			.r = vk::ComponentSwizzle::eIdentity,
-			.g = vk::ComponentSwizzle::eIdentity,
-			.b = vk::ComponentSwizzle::eIdentity,
-			.a = vk::ComponentSwizzle::eIdentity,
-		},
-		.subresourceRange = {
-			.aspectMask = vk::ImageAspectFlagBits::eDepth,
-			.baseMipLevel = 0,
-			.levelCount = 1,
-			.baseArrayLayer = 0,
-			.layerCount = 1
-		},
-	};
-
-	depthImageView =
-		ptrDevice->logicalDevice.createImageView(imageViewCreateInfo);
 }
 
 SurfaceCapabilitiesKHRBatch SwapChain::getSwapchainCapabilities(

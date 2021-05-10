@@ -21,12 +21,16 @@ namespace mvk
 		alloc::Image depthImage;
 		vk::ImageView depthImageView;
 
+		alloc::Image colorImage;
+		vk::ImageView colorImageView;
+
 		uint32_t size = 0;
 		vk::Extent2D extent;
-		vk::Format frameFormat = vk::Format::eUndefined;
+		vk::Format colorFormat = vk::Format::eUndefined;
 		vk::Format depthFormat = vk::Format::eUndefined;
 
-		void createDepthImageView(vk::Queue transferQueue);
+		void createDepthImageTarget(vk::Queue transferQueue);
+		void createColorImageTarget(vk::Queue transferQueue);
 
 		SurfaceCapabilitiesKHRBatch getSwapchainCapabilities(
 			vk::PhysicalDevice physicalDevice,
@@ -56,7 +60,7 @@ namespace mvk
 
 		size_t getSwapchainSwainSize() const { return size; }
 		vk::Extent2D getSwapchainExtent() const { return extent; }
-		vk::Format getSwapchainFormat() const { return frameFormat; }
+		vk::Format getSwapchainFormat() const { return colorFormat; }
 
 		SwapchainFrame getSwapchainFrame(const int32_t index) const
 		{

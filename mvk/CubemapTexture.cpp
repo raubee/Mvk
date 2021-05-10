@@ -58,7 +58,7 @@ alloc::Image CubemapTexture::copyDataToGpuImage(
 	const vk::Format format) const
 {
 	const vk::DeviceSize imageSize = width * height * 4 * 6;
-	const vk::BufferCreateInfo bufferCreateInfo = {
+	const vk::BufferCreateInfo bufferCreateInfo{
 		.size = imageSize,
 		.usage = vk::BufferUsageFlagBits::eTransferSrc
 	};
@@ -68,13 +68,13 @@ alloc::Image CubemapTexture::copyDataToGpuImage(
 		                                    bufferCreateInfo,
 		                                    pixels);
 
-	const vk::Extent3D imageExtent = {
+	const vk::Extent3D imageExtent{
 		.width = width,
 		.height = height,
 		.depth = 1
 	};
 
-	const vk::ImageCreateInfo imageCreateInfo = {
+	const vk::ImageCreateInfo imageCreateInfo{
 		.flags = vk::ImageCreateFlagBits::eCubeCompatible,
 		.imageType = vk::ImageType::e2D,
 		.format = format,
@@ -92,7 +92,7 @@ alloc::Image CubemapTexture::copyDataToGpuImage(
 	const auto imageBuffer = alloc::allocateGpuOnlyImage(ptrDevice->allocator,
 	                                                     imageCreateInfo);
 
-	vk::BufferImageCopy bufferImageCopy = {
+	vk::BufferImageCopy bufferImageCopy{
 		.bufferOffset = 0,
 		.bufferRowLength = width,
 		.bufferImageHeight = height,
@@ -106,7 +106,7 @@ alloc::Image CubemapTexture::copyDataToGpuImage(
 		.imageExtent = imageExtent,
 	};
 
-	const vk::ImageSubresourceRange subresourceRange = {
+	const vk::ImageSubresourceRange subresourceRange{
 		.baseMipLevel = 0,
 		.levelCount = 1,
 		.baseArrayLayer = 0,
@@ -141,7 +141,7 @@ alloc::Image CubemapTexture::copyDataToGpuImage(
 
 void CubemapTexture::createImageView()
 {
-	const vk::ImageViewCreateInfo imageViewCreateInfo = {
+	const vk::ImageViewCreateInfo imageViewCreateInfo{
 		.image = image.image,
 		.viewType = vk::ImageViewType::eCube,
 		.format = format,
@@ -160,7 +160,7 @@ void CubemapTexture::createImageView()
 
 void CubemapTexture::createSampler()
 {
-	const vk::SamplerCreateInfo samplerCreateInfo = {
+	const vk::SamplerCreateInfo samplerCreateInfo{
 		.magFilter = vk::Filter::eLinear,
 		.minFilter = vk::Filter::eLinear,
 		.mipmapMode = vk::SamplerMipmapMode::eLinear,

@@ -39,7 +39,7 @@ void Skybox::createUniformBufferObject(vk::Queue transferQueue)
 {
 	const auto size = sizeof(UniformBufferObject);
 
-	const vk::BufferCreateInfo bufferCreateInfo = {
+	const vk::BufferCreateInfo bufferCreateInfo{
 		.size = static_cast<vk::DeviceSize>(size),
 		.usage = vk::BufferUsageFlagBits::eUniformBuffer,
 	};
@@ -50,7 +50,8 @@ void Skybox::createUniformBufferObject(vk::Queue transferQueue)
 
 void Skybox::createSkyboxVertexBuffer(const vk::Queue transferQueue)
 {
-	std::vector<SkyboxVertex> vertices = {
+	std::vector<SkyboxVertex> vertices
+	{
 		// -Z
 		{{-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f}},
 		{{1.0f, -1.0f, -1.0f}, {0.0f, 1.0f}},
@@ -64,7 +65,8 @@ void Skybox::createSkyboxVertexBuffer(const vk::Queue transferQueue)
 		{{-1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}}
 	};
 
-	std::vector<uint16_t> indices = {
+	std::vector<uint16_t> indices
+	{
 		0, 1, 3, 3, 1, 2,
 		1, 5, 2, 2, 5, 6,
 		5, 4, 6, 6, 4, 7,
@@ -95,7 +97,8 @@ void Skybox::createSkyboxVertexBuffer(const vk::Queue transferQueue)
 
 void Skybox::createDescriptorLayout(Device* device)
 {
-	const std::vector<vk::DescriptorSetLayoutBinding> layoutBindings = {
+	const std::vector<vk::DescriptorSetLayoutBinding> layoutBindings
+	{
 		// UBO
 		{
 			.binding = 0,
@@ -113,7 +116,7 @@ void Skybox::createDescriptorLayout(Device* device)
 		}
 	};
 
-	const vk::DescriptorSetLayoutCreateInfo createInfo = {
+	const vk::DescriptorSetLayoutCreateInfo createInfo{
 		.bindingCount = static_cast<uint32_t>(layoutBindings.size()),
 		.pBindings = layoutBindings.data()
 	};
@@ -124,7 +127,8 @@ void Skybox::createDescriptorLayout(Device* device)
 
 void Skybox::createDescriptorPool()
 {
-	const std::vector<vk::DescriptorPoolSize> descriptorPoolSizes = {
+	const std::vector<vk::DescriptorPoolSize> descriptorPoolSizes
+	{
 		{
 			.type = vk::DescriptorType::eUniformBuffer,
 			.descriptorCount = 1
@@ -135,7 +139,7 @@ void Skybox::createDescriptorPool()
 		}
 	};
 
-	const vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+	const vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{
 		.maxSets = 1,
 		.poolSizeCount = static_cast<uint32_t>(descriptorPoolSizes.size()),
 		.pPoolSizes = descriptorPoolSizes.data()
@@ -147,7 +151,7 @@ void Skybox::createDescriptorPool()
 
 void Skybox::createDescriptorSets()
 {
-	const vk::DescriptorSetAllocateInfo allocateInfo = {
+	const vk::DescriptorSetAllocateInfo allocateInfo{
 		.descriptorPool = descriptorPool,
 		.descriptorSetCount = 1,
 		.pSetLayouts = &descriptorSetLayout
@@ -162,20 +166,21 @@ void Skybox::updateDescriptorSets()
 	for (const auto& descriptorSet : descriptorSets)
 	{
 		// UBO
-		const vk::DescriptorBufferInfo bufferInfo = {
+		const vk::DescriptorBufferInfo bufferInfo{
 			.buffer = uniformBuffer.buffer,
 			.offset = {0},
 			.range = sizeof(UniformBufferObject)
 		};
 
 		// Cubemap
-		const vk::DescriptorImageInfo imageInfo = {
+		const vk::DescriptorImageInfo imageInfo{
 			.sampler = cubemap.getSampler(),
 			.imageView = cubemap.getImageView(),
 			.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
 		};
 
-		const std::vector<vk::WriteDescriptorSet> writeDescriptorSets = {
+		const std::vector<vk::WriteDescriptorSet> writeDescriptorSets
+		{
 			{
 				.dstSet = descriptorSet,
 				.dstBinding = 0,
@@ -203,25 +208,24 @@ void Skybox::updateDescriptorSets()
 void Skybox::buildPipeline(const vk::RenderPass renderPass)
 {
 	const std::vector<vk::PipelineShaderStageCreateInfo> shaderStageCreateInfos
-		= {
-			vertexShader->getPipelineShaderCreateInfo(),
-			fragmentShader->getPipelineShaderCreateInfo()
-		};
-
-	const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts =
 	{
+		vertexShader->getPipelineShaderCreateInfo(),
+		fragmentShader->getPipelineShaderCreateInfo()
+	};
+
+	const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts{
 		descriptorSetLayout
 	};
 
 	const std::vector<vk::VertexInputBindingDescription>
-		vertexInputBindingDescription = {
+		vertexInputBindingDescription{
 			SkyboxVertex::getVertexInputBindingDescription()
 		};
 
 	const auto& vertexInputAttributeDescriptions =
 		SkyboxVertex::getVertexInputAttributeDescriptions();
 
-	const GraphicPipelineCreateInfo createInfo = {
+	const GraphicPipelineCreateInfo createInfo{
 		.vertexInputBindingDescription = vertexInputBindingDescription,
 		.vertexInputAttributeDescription = vertexInputAttributeDescriptions,
 		.renderPass = renderPass,

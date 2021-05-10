@@ -10,17 +10,20 @@ namespace mvk
 
 		uint32_t width = 0;
 		uint32_t height = 0;
+		uint32_t mipLevels = 0;
+
 		vk::Format format = vk::Format::eUndefined;
 		alloc::Image image;
 		vk::ImageView imageView;
 		vk::Sampler sampler;
 
 		alloc::Image copyDataToGpuImage(vk::Queue transferQueue,
-		                                       const unsigned char* pixels,
-		                                       uint32_t width,
-		                                       uint32_t height,
-		                                       vk::Format format) const;
-
+		                                const unsigned char* pixels,
+		                                uint32_t width,
+		                                uint32_t height,
+		                                uint32_t mipLevels,
+		                                vk::Format format) const;
+		void generateMipMaps(vk::Queue transferQueue, vk::Image image) const;
 		void createImageView();
 		void createSampler();
 		void createDescriptorInfo();

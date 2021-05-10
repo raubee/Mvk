@@ -20,7 +20,6 @@ AppBase::AppBase(const AppInfo info)
 	createSemaphores();
 	updateSwapchain();
 	createEmptyTexture();
-	setupScene();
 }
 
 AppBase::~AppBase()
@@ -175,7 +174,7 @@ void AppBase::createInstance()
 	instanceLayers.push_back("VK_LAYER_LUNARG_standard_validation");
 #endif
 
-	const vk::ApplicationInfo applicationInfo = {
+	const vk::ApplicationInfo applicationInfo{
 		.pApplicationName = "mvk-app",
 		.applicationVersion = 1,
 		.pEngineName = "mvk-engine",
@@ -183,7 +182,7 @@ void AppBase::createInstance()
 		.apiVersion = VK_API_VERSION_1_2,
 	};
 
-	vk::InstanceCreateInfo instanceCreateInfo = {
+	vk::InstanceCreateInfo instanceCreateInfo{
 		.pApplicationInfo = &applicationInfo,
 		.enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
 		.ppEnabledExtensionNames = extensions.data()
@@ -220,7 +219,7 @@ void AppBase::createSurfaceKHR()
 
 void AppBase::pickPhysicalDevice()
 {
-	const std::vector<const char*> deviceExtensions = {
+	const std::vector<const char*> deviceExtensions{
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME
 	};
 
@@ -345,11 +344,11 @@ void AppBase::drawFrame()
 
 	update();
 
-	vk::Semaphore waitSemaphores[] = {imageAvailableSemaphore};
-	vk::PipelineStageFlags waitStages[] = {
+	vk::Semaphore waitSemaphores[]{imageAvailableSemaphore};
+	vk::PipelineStageFlags waitStages[]{
 		vk::PipelineStageFlagBits::eColorAttachmentOutput
 	};
-	vk::Semaphore signalSemaphores[] = {renderFinishedSemaphore};
+	vk::Semaphore signalSemaphores[]{renderFinishedSemaphore};
 
 	const auto commandBuffer = currentSwapchainFrame.getCommandBuffer();
 
@@ -440,7 +439,7 @@ void AppBase::createRenderPass()
 
 void AppBase::createSwapchainFrames()
 {
-	swapchain.createSwapchainFrames(renderPass.getRenderPass());
+	swapchain.createSwapchainFrames(renderPass.renderPass);
 	swapchain.createCommandBuffers();
 }
 
@@ -449,11 +448,6 @@ void AppBase::createEmptyTexture()
 	Texture2D::empty = new Texture2D();
 	const auto blackPixel = new unsigned char[4]{0, 0, 0, 0};
 	Texture2D::empty->loadRaw(&device, transferQueue, blackPixel, 1, 1);
-}
-
-void AppBase::setupScene()
-{
-	scene.setup(&device);
 }
 
 void AppBase::buildCommandBuffers()
@@ -512,7 +506,7 @@ void AppBase::update()
 		scrollY = 0;
 	}
 
-	scene.update(time);
+	scene.update(time, deltaTime);
 
 	lastMouseX = xPos;
 	lastMouseY = yPos;

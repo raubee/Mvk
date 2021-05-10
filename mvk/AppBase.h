@@ -97,8 +97,7 @@ namespace mvk
 		void createRenderPass();
 		void createSemaphores();
 		void createEmptyTexture();
-		void setupScene();
-
+		
 		virtual void buildCommandBuffers();
 		virtual void buildCommandBuffer(vk::CommandBuffer commandBuffer,
 			vk::Framebuffer frameBuffer) = 0;

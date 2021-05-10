@@ -6,6 +6,8 @@
 
 class MultiViewer : public mvk::AppBase
 {
+	mvk::Skybox skybox;
+
 	struct Textures
 	{
 		mvk::Texture2D albedo;
@@ -48,31 +50,34 @@ class MultiViewer : public mvk::AppBase
 		models.ganesh.loadFromFile(&device, transferQueue, modelPath);
 
 		textures.albedo.loadFromFile(&device, transferQueue, albedoPath,
-			vk::Format::eR8G8B8A8Unorm);
+		                             vk::Format::eR8G8B8A8Unorm);
 
 		textures.normal.loadFromFile(&device, transferQueue, normalPath,
-			vk::Format::eR8G8B8A8Unorm);
+		                             vk::Format::eR8G8B8A8Unorm);
 
 		textures.roughness.loadFromFile(&device, transferQueue, roughnessPath,
-			vk::Format::eR8G8B8A8Unorm);
+		                                vk::Format::eR8G8B8A8Unorm);
 
-		mvk::BaseMaterialDescription description;
+		mvk::BaseMaterial::BaseMaterialDescription description;
 		description.baseColor = &textures.albedo;
 		description.normal = &textures.normal;
 		description.metallicRoughness = &textures.roughness;
+		description.constants.baseTextureSet = 0;
+		//description.constants.metallicRoughnessTextureSet = 0;
+		description.constants.roughnessFactor = 1.0;
 
 		materials.standard.load(&device, description);
 
 		const std::vector<vk::VertexInputBindingDescription> bindingDescription
 			= {
 				mvk::Vertex::getBindingDescription()
-		};
+			};
 
 		const auto& attributeDescriptions =
 			mvk::Vertex::getAttributeDescriptions();
 
 		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
-			mvk::Scene::getDescriptorSetLayout(&device),
+			scene.descriptorSetLayout,
 			mvk::Model::getDescriptorSetLayout(&device),
 			mvk::BaseMaterial::getDescriptorSetLayout(&device)
 		};
@@ -80,13 +85,18 @@ class MultiViewer : public mvk::AppBase
 		const auto shaderStageInfo =
 			materials.standard.getPipelineShaderStageCreateInfo();
 
+		const std::vector<vk::PushConstantRange> pushConstantRanges = {
+			mvk::BaseMaterial::getPushConstantRange()
+		};
+
 		const mvk::GraphicPipelineCreateInfo opaquePipelineCreateInfo =
 		{
 			.vertexInputBindingDescription = bindingDescription,
 			.vertexInputAttributeDescription = attributeDescriptions,
-			.renderPass = renderPass.getRenderPass(),
+			.renderPass = renderPass.renderPass,
 			.shaderStageCreateInfos = shaderStageInfo,
 			.descriptorSetLayouts = descriptorSetLayouts,
+			.pushConstantRanges = pushConstantRanges,
 			.frontFace = vk::FrontFace::eCounterClockwise
 		};
 
@@ -143,13 +153,13 @@ class MultiViewer : public mvk::AppBase
 		const std::vector<vk::VertexInputBindingDescription> bindingDescription
 			= {
 				mvk::Vertex::getBindingDescription()
-		};
+			};
 
 		const auto& attributeDescriptions =
 			mvk::Vertex::getAttributeDescriptions();
 
 		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
-			mvk::Scene::getDescriptorSetLayout(&device),
+			scene.descriptorSetLayout,
 			mvk::Model::getDescriptorSetLayout(&device)
 		};
 
@@ -160,10 +170,10 @@ class MultiViewer : public mvk::AppBase
 		{
 			.vertexInputBindingDescription = bindingDescription,
 			.vertexInputAttributeDescription = attributeDescriptions,
-			.renderPass = renderPass.getRenderPass(),
+			.renderPass = renderPass.renderPass,
 			.shaderStageCreateInfos = shaderStageInfo,
-			.descriptorSetLayouts = descriptorSetLayouts,
-			.frontFace = vk::FrontFace::eClockwise
+			.descriptorSetLayouts = descriptorSetLayouts,	
+			.frontFace = vk::FrontFace::eClockwise,
 		};
 
 		pipelines.normal.build(&device, opaquePipelineCreateInfo);
@@ -190,15 +200,18 @@ public:
 			"assets/textures/skybox/back.jpg"
 		};
 
-		scene.setupSkybox(transferQueue, renderPass.getRenderPass(),
+		skybox.create(&device, transferQueue, renderPass.renderPass,
+		              skyboxTexturePaths);
 
-		skyboxTexturePaths);
+		scene.setup(&device, &skybox);
+
 		loadGanesh();
 		loadPlane();
 	}
 
 	~MultiViewer()
 	{
+		skybox.release();
 		textures.albedo.release();
 		textures.normal.release();
 		textures.roughness.release();
@@ -224,7 +237,7 @@ public:
 		clearValues[1].setDepthStencil({1.0f, 0});
 
 		const vk::RenderPassBeginInfo renderPassBeginInfo = {
-			.renderPass = renderPass.getRenderPass(),
+			.renderPass = renderPass.renderPass,
 			.framebuffer = framebuffer,
 			.renderArea = {
 				.offset = {0, 0},
@@ -287,6 +300,12 @@ public:
 			commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
 			                                 pipelineLayout, 0, descriptorCount,
 			                                 descriptorSets.data(), 0, nullptr);
+
+			commandBuffer.pushConstants(pipelineLayout,
+			                            vk::ShaderStageFlagBits::eFragment, 0,
+			                            sizeof(mvk::BaseMaterial::PushConstants
+			                            ),
+			                            &materials.standard.constants);
 
 			const auto vertexBuffer = models.ganesh.vertexBuffer;
 			const auto indexBuffer = models.ganesh.indexBuffer;

@@ -14,6 +14,8 @@ namespace mvk
 		vk::CommandPool commandPool;
 		uint32_t graphicsQueueFamilyIndex;
 
+		vk::SampleCountFlagBits multiSampling;
+
 		void filterDeviceExtensions(std::vector<const char*>& extensions) const
 		{
 			auto availableLayers = physicalDevice.
@@ -77,6 +79,49 @@ namespace mvk
 			for (auto layer : retainExtensions)
 			{
 				extensions.push_back(layer);
+			}
+		}
+
+		void setupSampling(const vk::SampleCountFlagBits desiredSampling =
+			vk::SampleCountFlagBits::e64)
+		{
+			const auto properties = physicalDevice.getProperties();
+
+			const auto supportedSampling =
+				properties.limits.framebufferColorSampleCounts &
+				properties.limits.framebufferDepthSampleCounts;
+
+			if (supportedSampling & desiredSampling)
+			{
+				multiSampling = desiredSampling;
+			}
+			else if (supportedSampling & vk::SampleCountFlagBits::e64)
+			{
+				multiSampling = vk::SampleCountFlagBits::e64;
+			}
+			else if (supportedSampling & vk::SampleCountFlagBits::e32)
+			{
+				multiSampling = vk::SampleCountFlagBits::e32;
+			}
+			else if (supportedSampling & vk::SampleCountFlagBits::e16)
+			{
+				multiSampling = vk::SampleCountFlagBits::e16;
+			}
+			else if (supportedSampling & vk::SampleCountFlagBits::e8)
+			{
+				multiSampling = vk::SampleCountFlagBits::e8;
+			}
+			else if (supportedSampling & vk::SampleCountFlagBits::e4)
+			{
+				multiSampling = vk::SampleCountFlagBits::e4;
+			}
+			else if (supportedSampling & vk::SampleCountFlagBits::e2)
+			{
+				multiSampling = vk::SampleCountFlagBits::e2;
+			}
+			else
+			{
+				multiSampling = vk::SampleCountFlagBits::e1;
 			}
 		}
 
@@ -172,6 +217,8 @@ namespace mvk
 #if (NDEBUG)
 			std::cout << "Logical device created!" << std::endl;
 #endif
+
+			setupSampling();
 
 			createCommandPool();
 		}

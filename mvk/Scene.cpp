@@ -2,39 +2,29 @@
 
 using namespace mvk;
 
-void Scene::setup(Device* device)
+void Scene::setup(Device* device, Skybox* skybox)
 {
 	this->ptrDevice = device;
+	this->skybox = skybox;
 
 	modelMatrix = glm::rotate(glm::mat4(1.0f), 0.0f,
 	                          glm::vec3(0.0f, 1.0f, 0.0f));
 
 	createUniformBufferObject();
-	updateUniformBufferObject(0.0f);
-	createDescriptorSetLayout(device);
+	updateUniformBufferObject(0.0f, 0.0f);
+	createDescriptorSetLayout();
 	createDescriptorPool();
 	createDescriptorSets();
 	updateDescriptorSets();
 }
 
-void Scene::setupSkybox(const vk::Queue transferQueue,
-                        const vk::RenderPass renderPass,
-                        const std::array<std::string, 6> texturePaths)
+void Scene::update(const float time, const float deltaTime)
 {
-	skybox = new Skybox();
-	skybox->create(ptrDevice, transferQueue, renderPass, texturePaths);
-}
-
-void Scene::update(const float time) const
-{
-	updateUniformBufferObject(time);
+	updateUniformBufferObject(time, deltaTime);
 }
 
 void Scene::release() const
 {
-	if (skybox)
-		skybox->release();
-
 	ptrDevice->destroyBuffer(uniformBuffer);
 	ptrDevice->logicalDevice.destroyDescriptorPool(descriptorPool);
 
@@ -53,7 +43,7 @@ void Scene::renderSkybox(const vk::CommandBuffer commandBuffer) const
 	const auto pipeline = skybox->graphicPipeline.getPipeline();
 	const auto pipelineLayout = skybox->graphicPipeline.getPipelineLayout();
 
-	const std::vector<vk::DescriptorSet> descriptorSets = {
+	const std::vector<vk::DescriptorSet> descriptorSets{
 		skybox->getDescriptorSet(0)
 	};
 
@@ -69,7 +59,7 @@ void Scene::renderSkybox(const vk::CommandBuffer commandBuffer) const
 	                                 pipelineLayout, 0, descriptorCount,
 	                                 descriptorSets.data(), 0, nullptr);
 
-	vk::DeviceSize offsets[] = {0};
+	vk::DeviceSize offsets[]{0};
 
 	commandBuffer.bindVertexBuffers(0, 1, &vertexBuffer.buffer, offsets);
 	commandBuffer.bindIndexBuffer(indexBuffer.buffer, 0,
@@ -81,7 +71,7 @@ void Scene::createUniformBufferObject()
 {
 	const auto size = sizeof(UniformBufferObject);
 
-	const vk::BufferCreateInfo bufferCreateInfo = {
+	const vk::BufferCreateInfo bufferCreateInfo{
 		.size = static_cast<vk::DeviceSize>(size),
 		.usage = vk::BufferUsageFlagBits::eUniformBuffer,
 	};
@@ -92,16 +82,27 @@ void Scene::createUniformBufferObject()
 
 void Scene::createDescriptorPool()
 {
-	vk::DescriptorPoolSize descriptorPoolSizes{
-		.type = vk::DescriptorType::eUniformBuffer,
-		.descriptorCount = 1
+	std::vector<vk::DescriptorPoolSize> descriptorPoolSizes{
+		{
+			.type = vk::DescriptorType::eUniformBuffer,
+			.descriptorCount = 1
+		},
 	};
 
-	const vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo =
+	if (skybox)
 	{
+		descriptorPoolSizes.push_back({
+			vk::DescriptorType::eCombinedImageSampler, 1
+		});
+	}
+
+	const auto poolSizeCount =
+		static_cast<uint32_t>(descriptorPoolSizes.size());
+
+	const vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{
 		.maxSets = 1,
-		.poolSizeCount = 1,
-		.pPoolSizes = &descriptorPoolSizes
+		.poolSizeCount = poolSizeCount,
+		.pPoolSizes = descriptorPoolSizes.data()
 	};
 
 	descriptorPool = ptrDevice->logicalDevice
@@ -110,7 +111,7 @@ void Scene::createDescriptorPool()
 
 void Scene::createDescriptorSets()
 {
-	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{
 		.descriptorPool = descriptorPool,
 		.descriptorSetCount = 1,
 		.pSetLayouts = &descriptorSetLayout
@@ -121,36 +122,99 @@ void Scene::createDescriptorSets()
 		                          descriptorSetAllocateInfo);
 }
 
+void Scene::createDescriptorSetLayout()
+{
+	std::vector<vk::DescriptorSetLayoutBinding> layoutBindings
+	{
+		// UBO
+		{
+			.binding = 0,
+			.descriptorType = vk::DescriptorType::eUniformBuffer,
+			.descriptorCount = 1,
+			.stageFlags = vk::ShaderStageFlagBits::eVertex
+		},
+	};
+
+	if (skybox)
+	{
+		layoutBindings.push_back(
+			// Skybox
+			{
+				.binding = 1,
+				.descriptorType =
+				vk::DescriptorType::eCombinedImageSampler,
+				.descriptorCount = 1,
+				.stageFlags = vk::ShaderStageFlagBits::eFragment
+			}
+		);
+	}
+
+	const auto bindingCount =
+		static_cast<uint32_t>(layoutBindings.size());
+
+	const vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{
+		.bindingCount = bindingCount,
+		.pBindings = layoutBindings.data()
+	};
+
+	descriptorSetLayout = ptrDevice->logicalDevice
+	                               .createDescriptorSetLayout(
+		                               descriptorSetLayoutCreateInfo);
+}
+
 void Scene::updateDescriptorSets()
 {
 	for (const auto& descriptorSet : descriptorSets)
 	{
-		const vk::DescriptorBufferInfo descriptorBufferInfo =
-		{
+		const vk::DescriptorBufferInfo descriptorBufferInfo{
 			.buffer = uniformBuffer.buffer,
 			.offset = 0,
 			.range = sizeof(UniformBufferObject)
 		};
 
-		const vk::WriteDescriptorSet writeDescriptorSet =
+		std::vector<vk::WriteDescriptorSet> writeDescriptorSets
 		{
-			.dstSet = descriptorSet,
-			.dstBinding = 0,
-			.dstArrayElement = 0,
-			.descriptorCount = 1,
-			.descriptorType = vk::DescriptorType::eUniformBuffer,
-			.pBufferInfo = &descriptorBufferInfo,
+			// UBO
+			{
+				.dstSet = descriptorSet,
+				.dstBinding = 0,
+				.dstArrayElement = 0,
+				.descriptorCount = 1,
+				.descriptorType = vk::DescriptorType::eUniformBuffer,
+				.pBufferInfo = &descriptorBufferInfo,
+			}
 		};
 
+		if (skybox)
+		{
+			writeDescriptorSets.push_back(
+				// EnvMap
+				{
+					.dstSet = descriptorSet,
+					.dstBinding = 1,
+					.dstArrayElement = 0,
+					.descriptorCount = 1,
+					.descriptorType = vk::DescriptorType::eCombinedImageSampler,
+					.pImageInfo = &skybox->cubemap.descriptorInfo,
+				}
+			);
+		}
+
+		const auto descriptorCount =
+			static_cast<uint32_t>(writeDescriptorSets.size());
+
 		ptrDevice->logicalDevice
-		         .updateDescriptorSets(1, &writeDescriptorSet, 0, nullptr);
+		         .updateDescriptorSets(descriptorCount,
+		                               writeDescriptorSets.data(), 0, nullptr);
 	}
 }
 
-void Scene::updateUniformBufferObject(const float time) const
+void Scene::updateUniformBufferObject(const float time, const float deltaTime)
 {
 	UniformBufferObject ubo{};
 
+	modelMatrix = glm::rotate(glm::mat4(1), glm::radians(20.f) * deltaTime,
+	                          glm::vec3(0, 1, 0)) * modelMatrix;
 	ubo.model = modelMatrix;
 	ubo.view = camera.viewMatrix;
 	ubo.proj = camera.projMatrix;

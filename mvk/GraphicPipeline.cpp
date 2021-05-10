@@ -10,7 +10,7 @@ void GraphicPipeline::build(Device* device,
 
 	/** Vertex Input State settings **/
 	const vk::PipelineVertexInputStateCreateInfo
-		pipelineVertexInputStateCreateInfo = {
+		pipelineVertexInputStateCreateInfo{
 			.vertexBindingDescriptionCount =
 			static_cast<uint32_t>(createInfo
 			                      .vertexInputBindingDescription.size()),
@@ -28,14 +28,14 @@ void GraphicPipeline::build(Device* device,
 
 	/** Input Assembly **/
 	const vk::PipelineInputAssemblyStateCreateInfo
-		pipelineInputAssemblyStateCreateInfo = {
+		pipelineInputAssemblyStateCreateInfo{
 			.topology = vk::PrimitiveTopology::eTriangleList,
 			.primitiveRestartEnable = false
 		};
 
 	/** Viewport and Scissors **/
 	// Note: Viewport and Scissors will be updated dynamically with command buffers
-	const vk::Viewport viewport = {
+	const vk::Viewport viewport{
 		.x = 0.0f,
 		.y = 0.0f,
 		.width = 0.0f,
@@ -44,16 +44,15 @@ void GraphicPipeline::build(Device* device,
 		.maxDepth = 1.0f
 	};
 
-	const vk::Rect2D scissor = {
-		.offset = {
+	const vk::Rect2D scissor{
+		.offset{
 			.x = 0,
 			.y = 0
 		},
-		.extent = {0, 0}
+		.extent{0, 0}
 	};
 
-	const vk::PipelineViewportStateCreateInfo pipelineViewportStateCreateInfo =
-	{
+	const vk::PipelineViewportStateCreateInfo pipelineViewportStateCreateInfo{
 		.viewportCount = 1,
 		.pViewports = &viewport,
 		.scissorCount = 1,
@@ -62,11 +61,11 @@ void GraphicPipeline::build(Device* device,
 
 	/** Rasterizer **/
 	const vk::PipelineRasterizationStateCreateInfo
-		pipelineRasterizationStateCreateInfo = {
+		pipelineRasterizationStateCreateInfo{
 			.depthClampEnable = VK_FALSE,
 			.rasterizerDiscardEnable = VK_FALSE,
 			.polygonMode = vk::PolygonMode::eFill,
-			.cullMode = vk::CullModeFlagBits::eBack,
+			.cullMode = createInfo.cullMode,
 			.frontFace = createInfo.frontFace,
 			.depthBiasEnable = VK_FALSE,
 			.lineWidth = 1.0f,
@@ -74,14 +73,14 @@ void GraphicPipeline::build(Device* device,
 
 	/** Multi-Sampling **/
 	const vk::PipelineMultisampleStateCreateInfo
-		pipelineMultisampleStateCreateInfo = {
-			.rasterizationSamples = vk::SampleCountFlagBits::e1,
+		pipelineMultisampleStateCreateInfo{
+			.rasterizationSamples = ptrDevice->multiSampling,
 			.sampleShadingEnable = VK_FALSE,
 		};
 
 	/** Depth and stencil **/
 	const vk::PipelineDepthStencilStateCreateInfo
-		pipelineDepthStencilStateCreateInfo = {
+		pipelineDepthStencilStateCreateInfo{
 			.depthTestEnable = createInfo.depthTest,
 			.depthWriteEnable = vk::Bool32(true),
 			.depthCompareOp = vk::CompareOp::eLess,
@@ -91,7 +90,7 @@ void GraphicPipeline::build(Device* device,
 
 	/** Color blending **/
 	const vk::PipelineColorBlendAttachmentState
-		pipelineColorBlendAttachmentState = {
+		pipelineColorBlendAttachmentState{
 			.blendEnable = createInfo.alpha,
 			.srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
 			.dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
@@ -107,20 +106,20 @@ void GraphicPipeline::build(Device* device,
 		};
 
 	const vk::PipelineColorBlendStateCreateInfo
-		pipelineColorBlendStateCreateInfo = {
+		pipelineColorBlendStateCreateInfo{
 			.logicOpEnable = vk::Bool32(false),
 			.attachmentCount = 1,
 			.pAttachments = &pipelineColorBlendAttachmentState,
 		};
 
 	/** Dynamic state **/
-	const std::vector<vk::DynamicState> states = {
+	const std::vector<vk::DynamicState> states{
 		vk::DynamicState::eViewport,
 		vk::DynamicState::eLineWidth,
-		vk::DynamicState::eScissor,
+		vk::DynamicState::eScissor
 	};
 
-	const vk::PipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo = {
+	const vk::PipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo{
 		.dynamicStateCount = static_cast<uint32_t>(states.size()),
 		.pDynamicStates = states.data()
 	};
@@ -129,14 +128,17 @@ void GraphicPipeline::build(Device* device,
 	const vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo{
 		.setLayoutCount =
 		static_cast<uint32_t>(createInfo.descriptorSetLayouts.size()),
-		.pSetLayouts = createInfo.descriptorSetLayouts.data()
+		.pSetLayouts = createInfo.descriptorSetLayouts.data(),
+		.pushConstantRangeCount =
+		static_cast<uint32_t>(createInfo.pushConstantRanges.size()),
+		.pPushConstantRanges = createInfo.pushConstantRanges.data()
 	};
 
 	pipelineLayout =
 		device->logicalDevice.createPipelineLayout(pipelineLayoutCreateInfo);
 
 	const vk::PipelineCache pipelineCache;
-	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {
+	const vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo{
 		.stageCount =
 		static_cast<uint32_t>(createInfo.shaderStageCreateInfos.size()),
 		.pStages = createInfo.shaderStageCreateInfos.data(),
@@ -150,7 +152,7 @@ void GraphicPipeline::build(Device* device,
 		.pDynamicState = &pipelineDynamicStateCreateInfo,
 		.layout = pipelineLayout,
 		.renderPass = createInfo.renderPass,
-		.subpass = 0
+		.subpass = 0,
 	};
 
 	vk::Result result;

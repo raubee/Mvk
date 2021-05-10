@@ -7,10 +7,11 @@ void BaseMaterial::load(Device* device,
 
 {
 	alphaMode = description.alphaMode;
-
 	baseColor = description.baseColor;
 	normal = description.normal;
 	metallicRoughness = description.metallicRoughness;
+
+	constants = description.constants;
 
 	Material::load(device,
 	               new Shader(device, "shaders/base.vert.spv",
@@ -43,19 +44,25 @@ void BaseMaterial::release()
 void BaseMaterial::createDescriptorSetLayout(Device* device)
 {
 	std::vector<vk::DescriptorSetLayoutBinding> layoutBindings
-		= {
+	{
 
 		// BaseColor
-		{0, vk::DescriptorType::eCombinedImageSampler, 1,
-		vk::ShaderStageFlagBits::eFragment},
+		{
+			0, vk::DescriptorType::eCombinedImageSampler, 1,
+			vk::ShaderStageFlagBits::eFragment
+		},
 
 		// Normal
-		{1, vk::DescriptorType::eCombinedImageSampler, 1,
-		vk::ShaderStageFlagBits::eFragment},
+		{
+			1, vk::DescriptorType::eCombinedImageSampler, 1,
+			vk::ShaderStageFlagBits::eFragment
+		},
 
 		// MetallicRoughness
-		{2, vk::DescriptorType::eCombinedImageSampler, 1,
-		vk::ShaderStageFlagBits::eFragment},
+		{
+			2, vk::DescriptorType::eCombinedImageSampler, 1,
+			vk::ShaderStageFlagBits::eFragment
+		},
 
 	};
 
@@ -63,14 +70,14 @@ void BaseMaterial::createDescriptorSetLayout(Device* device)
 		static_cast<uint32_t>(layoutBindings.size());
 
 	const vk::DescriptorSetLayoutCreateInfo
-		descriptorSetLayoutCreateInfo = {
+		descriptorSetLayoutCreateInfo{
 			.bindingCount = bindingCount,
 			.pBindings = layoutBindings.data()
-	};
+		};
 
 	descriptorSetLayout = device->logicalDevice
-		.createDescriptorSetLayout(
-			descriptorSetLayoutCreateInfo);
+	                            .createDescriptorSetLayout(
+		                            descriptorSetLayoutCreateInfo);
 }
 
 void BaseMaterial::createDescriptorPool()
@@ -80,7 +87,7 @@ void BaseMaterial::createDescriptorPool()
 		.descriptorCount = 1
 	};
 
-	const vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+	const vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo{
 		.maxSets = 1,
 		.poolSizeCount = 1,
 		.pPoolSizes = &descriptorPoolSize
@@ -92,7 +99,7 @@ void BaseMaterial::createDescriptorPool()
 
 void BaseMaterial::createDescriptorSets()
 {
-	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+	const vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo{
 		.descriptorPool = descriptorPool,
 		.descriptorSetCount = 1,
 		.pSetLayouts = &descriptorSetLayout
@@ -107,10 +114,10 @@ void BaseMaterial::updateDescriptorSets()
 {
 	for (const auto& descriptorSet : descriptorSets)
 	{
-		std::vector<vk::WriteDescriptorSet> writeDescriptorSets = {
+		std::vector<vk::WriteDescriptorSet> writeDescriptorSets{
 
 			// Base color
-			 {
+			{
 				.dstSet = descriptorSet,
 				.dstBinding = 0,
 				.dstArrayElement = 0,
@@ -137,12 +144,13 @@ void BaseMaterial::updateDescriptorSets()
 				.descriptorCount = 1,
 				.descriptorType = vk::DescriptorType::eCombinedImageSampler,
 				.pImageInfo = &metallicRoughness->descriptorInfo
-			} };
+			}
+		};
 
 		const auto size = static_cast<uint32_t>(writeDescriptorSets.size());
-		
+
 		ptrDevice->logicalDevice
-		         .updateDescriptorSets(size, writeDescriptorSets.data(), 0, 
-					 nullptr);
+		         .updateDescriptorSets(size, writeDescriptorSets.data(), 0,
+		                               nullptr);
 	}
 }
