@@ -6,14 +6,13 @@ Features :
 - GLTF files
 - Multiple graphic pipelines support
 - Bdrf lighting 
+- Mipsmaps, multisampling
 
 Textures supported : (all stb_image formats) **.jpg**, **.png**, **.tga**, **.bmp**, **.psd**, **.gif**, **.hdr**, **.pic** </br>
 3D models extensions supported : **.obj**, **gltf**
 
 Next steps :
-- Mipmaps support
-- Multi-sampling
-- Supporting Animations in gltf files
+- Supporting Animations in gltf files and fix some issues
 - Improving brdf shading with Image Based Light source
 
 # Libraries
