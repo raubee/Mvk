@@ -395,6 +395,17 @@ namespace mvk
 				sourceStage = vk::PipelineStageFlagBits::eTransfer;
 				destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
 			}
+			else if (oldLayout == vk::ImageLayout::eTransferDstOptimal &&
+				newLayout == vk::ImageLayout::eTransferSrcOptimal)
+			{
+				imageMemoryBarrier.setSrcAccessMask(
+					vk::AccessFlagBits::eTransferWrite);
+				imageMemoryBarrier.setDstAccessMask(
+					vk::AccessFlagBits::eTransferRead);
+
+				sourceStage = vk::PipelineStageFlagBits::eTransfer;
+				destinationStage = vk::PipelineStageFlagBits::eTransfer;
+			}
 			else
 			{
 				throw std::invalid_argument("Layout transition not supported!");

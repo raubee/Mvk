@@ -130,12 +130,16 @@ const
 	                                   imageBuffer,
 	                                   bufferImageCopy);
 
-	generateMipMaps(transferQueue, imageBuffer.image);
+	if(mipLevels > 1)
+	{
+		generateMipMaps(transferQueue, imageBuffer.image);
+	}
 
 	ptrDevice->transitionImageLayout(transferQueue, imageBuffer.image,
 	                                 vk::ImageLayout::eTransferDstOptimal,
 	                                 vk::ImageLayout::eShaderReadOnlyOptimal,
 	                                 subresourceRange);
+
 
 	alloc::deallocateBuffer(ptrDevice->allocator, stagingBuffer);
 
@@ -147,32 +151,33 @@ void Texture2D::generateMipMaps(const vk::Queue transferQueue,
 {
 	const auto commandBuffer = ptrDevice->beginOneTimeSubmitCommands();
 
-	vk::ImageMemoryBarrier imageMemoryBarrier{
-		.srcAccessMask = vk::AccessFlagBits::eTransferWrite,
-		.dstAccessMask = vk::AccessFlagBits::eTransferRead,
-		.oldLayout = vk::ImageLayout::eTransferDstOptimal,
-		.newLayout = vk::ImageLayout::eTransferSrcOptimal,
-		.image = image,
-		.subresourceRange{
-			.baseMipLevel = 0,
-			.levelCount = 1,
-			.baseArrayLayer = 0,
-			.layerCount = 1
-		}
-	};
-
-	commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-	                              vk::PipelineStageFlagBits::
-	                              eFragmentShader,
-	                              vk::DependencyFlagBits::eByRegion,
-	                              0, nullptr, 0, nullptr,
-	                              1, &imageMemoryBarrier);
-
 	int mipWidth = width;
 	int mipHeight = height;
 
 	for (auto i = 1; i < mipLevels; i++)
 	{
+		vk::ImageMemoryBarrier imageMemoryBarrier{
+			.srcAccessMask = vk::AccessFlagBits::eTransferWrite,
+			.dstAccessMask = vk::AccessFlagBits::eTransferRead,
+			.oldLayout = vk::ImageLayout::eTransferDstOptimal,
+			.newLayout = vk::ImageLayout::eTransferSrcOptimal,
+			.image = image,
+			.subresourceRange{
+				.aspectMask = vk::ImageAspectFlagBits::eColor,
+				.baseMipLevel = static_cast<uint32_t>(i - 1),
+				.levelCount = 1,
+				.baseArrayLayer = 0,
+				.layerCount = 1
+			}
+		};
+
+		commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+		                              vk::PipelineStageFlagBits::
+		                              eTransfer,
+		                              vk::DependencyFlagBits::eByRegion,
+		                              0, nullptr, 0, nullptr,
+		                              1, &imageMemoryBarrier);
+
 		const std::array<vk::Offset3D, 2> srcOffsets{
 			vk::Offset3D{0, 0, 0},
 			vk::Offset3D{mipWidth, mipHeight, 1}
@@ -218,16 +223,24 @@ void Texture2D::generateMipMaps(const vk::Queue transferQueue,
 		if (mipHeight > 1) mipHeight /= 2;
 	}
 
-	imageMemoryBarrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
-	imageMemoryBarrier.dstAccessMask = vk::AccessFlagBits::eShaderRead;
-	imageMemoryBarrier.oldLayout = vk::ImageLayout::eTransferSrcOptimal;
-	imageMemoryBarrier.newLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
-	imageMemoryBarrier.subresourceRange.baseMipLevel
-		= static_cast<uint32_t>(mipLevels - 1);
-
+	vk::ImageMemoryBarrier imageMemoryBarrier{
+		.srcAccessMask = vk::AccessFlagBits::eTransferRead,
+		.dstAccessMask = vk::AccessFlagBits::eTransferWrite,
+		.oldLayout = vk::ImageLayout::eTransferSrcOptimal,
+		.newLayout = vk::ImageLayout::eTransferDstOptimal,
+		.image = image,
+		.subresourceRange{
+			.aspectMask = vk::ImageAspectFlagBits::eColor,
+			.baseMipLevel = 0,
+			.levelCount = mipLevels - 1,
+			.baseArrayLayer = 0,
+			.layerCount = 1
+		}
+	};
 
 	commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-	                              vk::PipelineStageFlagBits::eFragmentShader,
+	                              vk::PipelineStageFlagBits::
+	                              eTransfer,
 	                              vk::DependencyFlagBits::eByRegion,
 	                              0, nullptr, 0, nullptr,
 	                              1, &imageMemoryBarrier);
