@@ -58,13 +58,15 @@ class MultiViewer : public mvk::AppBase
 		textures.roughness.loadFromFile(&device, transferQueue, roughnessPath,
 		                                vk::Format::eR8G8B8A8Unorm);
 
-		mvk::BaseMaterial::BaseMaterialDescription description;
-		description.baseColor = &textures.albedo;
-		description.normal = &textures.normal;
-		description.metallicRoughness = &textures.roughness;
-		description.constants.baseTextureSet = 0;
-		//description.constants.metallicRoughnessTextureSet = 0;
-		description.constants.roughnessFactor = 1.0;
+		mvk::BaseMaterial::BaseMaterialDescription description{
+			.constants{
+				.baseColorTextureSet = 0,
+				.normalTextureSet = 0,
+			},
+			.baseColor = &textures.albedo,
+			.normal = &textures.normal,
+			.metallicRoughness = &textures.roughness,
+		};
 
 		materials.standard.load(&device, description);
 

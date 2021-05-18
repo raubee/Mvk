@@ -36,6 +36,8 @@ public:
 		scene.camera.setLookAt(glm::vec3(0.0f, 0.5f, 0.0f));
 		scene.camera.setDistance(1.5f);
 
+		scene.setup(&device);
+
 		const auto vertices = std::vector<mvk::Vertex>({
 			{
 				{-0.5f, 0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f},
@@ -90,7 +92,7 @@ public:
 			mvk::Vertex::getAttributeDescriptions();
 
 		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
-			mvk::Scene::getDescriptorSetLayout(&device),
+			scene.descriptorSetLayout,
 			mvk::Model::getDescriptorSetLayout(&device),
 		};
 
@@ -101,7 +103,7 @@ public:
 		{
 			.vertexInputBindingDescription = bindingDescription,
 			.vertexInputAttributeDescription = attributeDescriptions,
-			.renderPass = renderPass.getRenderPass(),
+			.renderPass = renderPass.renderPass,
 			.shaderStageCreateInfos = shaderStageInfo,
 			.descriptorSetLayouts = descriptorSetLayouts,
 			.frontFace = vk::FrontFace::eClockwise
@@ -131,7 +133,7 @@ public:
 		clearValues[1].setDepthStencil({1.0f, 0});
 
 		const vk::RenderPassBeginInfo renderPassBeginInfo = {
-			.renderPass = renderPass.getRenderPass(),
+			.renderPass = renderPass.renderPass,
 			.framebuffer = framebuffer,
 			.renderArea = {
 				.offset = {0, 0},

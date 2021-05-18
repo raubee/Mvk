@@ -6,6 +6,8 @@
 
 class ObjViewer : public mvk::AppBase
 {
+	mvk::Skybox skybox;
+
 	struct Textures
 	{
 		mvk::Texture2D albedo;
@@ -55,8 +57,10 @@ public:
 			"assets/textures/skybox/back.jpg"
 		};
 
-		scene.setupSkybox(transferQueue, renderPass.getRenderPass(),
-			skyboxTexturePaths);
+		skybox.create(&device, transferQueue, renderPass.renderPass,
+		              skyboxTexturePaths);
+
+		scene.setup(&device, &skybox);
 
 		const auto modelPath = "assets/models/ganesha/ganesha.obj";
 		const auto albedoPath =
@@ -72,43 +76,52 @@ public:
 		                             vk::Format::eR8G8B8A8Unorm);
 
 		textures.normal.loadFromFile(&device, transferQueue, normalPath,
-			vk::Format::eR8G8B8A8Unorm);
+		                             vk::Format::eR8G8B8A8Unorm);
 
 		textures.roughness.loadFromFile(&device, transferQueue, roughnessPath,
-			vk::Format::eR8G8B8A8Unorm);
+		                                vk::Format::eR8G8B8A8Unorm);
 
-		mvk::BaseMaterialDescription description;
-		description.baseColor = &textures.albedo;
-		description.normal = &textures.normal;
-		description.metallicRoughness = &textures.roughness;
+		mvk::BaseMaterial::BaseMaterialDescription description{
+			.constants{
+				.baseColorTextureSet = 0,
+				.normalTextureSet = 0,
+			},
+			.baseColor = &textures.albedo,
+			.normal = &textures.normal,
+			.metallicRoughness = &textures.roughness,
+		};
 
 		materials.standard.load(&device, description);
 
-		const std::vector<vk::VertexInputBindingDescription> bindingDescription
-			= {
+		const std::vector<vk::VertexInputBindingDescription>
+			bindingDescription{
 				mvk::Vertex::getBindingDescription()
-		};
+			};
 
 		const auto& attributeDescriptions =
 			mvk::Vertex::getAttributeDescriptions();
 
-		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts = {
-			mvk::Scene::getDescriptorSetLayout(&device),
+		const std::vector<vk::DescriptorSetLayout> descriptorSetLayouts{
+			scene.descriptorSetLayout,
 			mvk::Model::getDescriptorSetLayout(&device),
 			mvk::BaseMaterial::getDescriptorSetLayout(&device)
+		};
+
+		const std::vector<vk::PushConstantRange> pushConstantRanges{
+			materials.standard.getPushConstantRange()
 		};
 
 		const auto shaderStageInfo =
 			materials.standard.getPipelineShaderStageCreateInfo();
 
-		const mvk::GraphicPipelineCreateInfo opaquePipelineCreateInfo =
-		{
+		const mvk::GraphicPipelineCreateInfo opaquePipelineCreateInfo{
 			.vertexInputBindingDescription = bindingDescription,
 			.vertexInputAttributeDescription = attributeDescriptions,
-			.renderPass = renderPass.getRenderPass(),
+			.renderPass = renderPass.renderPass,
 			.shaderStageCreateInfos = shaderStageInfo,
 			.descriptorSetLayouts = descriptorSetLayouts,
-			.frontFace = vk::FrontFace::eCounterClockwise
+			.pushConstantRanges = pushConstantRanges,
+			.frontFace = vk::FrontFace::eCounterClockwise,
 		};
 
 		pipelines.standard.build(&device, opaquePipelineCreateInfo);
@@ -116,6 +129,7 @@ public:
 
 	~ObjViewer()
 	{
+		skybox.release();
 		textures.albedo.release();
 		textures.normal.release();
 		textures.roughness.release();
@@ -138,7 +152,7 @@ public:
 		clearValues[1].setDepthStencil({1.0f, 0});
 
 		const vk::RenderPassBeginInfo renderPassBeginInfo = {
-			.renderPass = renderPass.getRenderPass(),
+			.renderPass = renderPass.renderPass,
 			.framebuffer = framebuffer,
 			.renderArea = {
 				.offset = {0, 0},
@@ -152,12 +166,12 @@ public:
 		                              vk::SubpassContents::eInline);
 
 		const vk::Viewport viewport = {
-				.x = 0.0f,
-				.y = 0.0f,
-				.width = static_cast<float>(extent.width),
-				.height = static_cast<float>(extent.height),
-				.minDepth = 0.0f,
-				.maxDepth = 1.0f
+			.x = 0.0f,
+			.y = 0.0f,
+			.width = static_cast<float>(extent.width),
+			.height = static_cast<float>(extent.height),
+			.minDepth = 0.0f,
+			.maxDepth = 1.0f
 		};
 
 		commandBuffer.setViewport(0, viewport);
@@ -191,6 +205,12 @@ public:
 			                                 static_cast<uint32_t>(
 				                                 descriptorSets.size()),
 			                                 descriptorSets.data(), 0, nullptr);
+
+			commandBuffer.pushConstants(pipelineLayout,
+			                            vk::ShaderStageFlagBits::eFragment,
+			                            0, sizeof(mvk::BaseMaterial::
+				                            PushConstants),
+			                            &materials.standard.constants);
 
 			const auto vertexBuffer = models.ganesh.vertexBuffer;
 			const auto indexBuffer = models.ganesh.indexBuffer;

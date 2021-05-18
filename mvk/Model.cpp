@@ -676,7 +676,7 @@ void Model::loadMaterials(const tinygltf::Model model)
 			const auto& id =
 				model.textures[mat.pbrMetallicRoughness.baseColorTexture.index];
 			materialDescription.baseColor = textures[id.source];
-			materialDescription.constants.baseTextureSet = 0;
+			materialDescription.constants.baseColorTextureSet = 0;
 		}
 
 		// Normal

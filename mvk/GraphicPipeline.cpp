@@ -4,7 +4,7 @@
 using namespace mvk;
 
 void GraphicPipeline::build(Device* device,
-                            GraphicPipelineCreateInfo createInfo)
+                            const GraphicPipelineCreateInfo createInfo)
 {
 	this->ptrDevice = device;
 

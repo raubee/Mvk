@@ -29,7 +29,7 @@ namespace mvk
 			glm::vec4 baseColorFactor = glm::vec4(1);
 			float metallicFactor = 0.0f;
 			float roughnessFactor = 1.0f;
-			int baseTextureSet = -1;
+			int baseColorTextureSet = -1;
 			int normalTextureSet = -1;
 			int metallicRoughnessTextureSet = -1;
 		};
