@@ -7,14 +7,15 @@ Features :
 - Multiple graphic pipelines support
 - Bdrf lighting 
 - Mipsmaps, multisampling
+- Skybox and reflection maps
 
 Textures supported : (all stb_image formats) **.jpg**, **.png**, **.tga**, **.bmp**, **.psd**, **.gif**, **.hdr**, **.pic** </br>
 3D models extensions supported : **.obj**, **gltf**
 
 Next steps :
-- Mipmaps for cubemaps
+- Improving brdf shading with Irradiance map for Image Based Light source
 - Supporting Animations in gltf files and fix some issues
-- Improving brdf shading with Image Based Light source
+- Deferred rendering pipeline with G-Buffers
 
 # Libraries
 Vulkan hpp c++ bindings for Vulkan : [Vulkan-hpp](https://github.com/KhronosGroup/Vulkan-Hpp)</br>
