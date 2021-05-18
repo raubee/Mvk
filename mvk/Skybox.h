@@ -64,6 +64,8 @@ namespace mvk
 		Shader* vertexShader;
 		Shader* fragmentShader;
 
+		void buildIrradianceMap();
+
 		void loadShaders();
 		void loadCubemap(vk::Queue transferQueue,
 		                 std::array<std::string, 6> texturePaths);
@@ -88,6 +90,7 @@ namespace mvk
 		};
 
 		CubemapTexture cubemap;
+		CubemapTexture* irradianceMap;
 
 		GraphicPipeline graphicPipeline;
 

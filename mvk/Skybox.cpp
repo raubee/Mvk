@@ -33,6 +33,8 @@ void Skybox::loadCubemap(const vk::Queue transferQueue,
 {
 	cubemap.loadFromSixFiles(ptrDevice, transferQueue, texturePaths,
 	                         vk::Format::eR8G8B8A8Unorm);
+
+	irradianceMap = &cubemap;
 }
 
 void Skybox::createUniformBufferObject(vk::Queue transferQueue)

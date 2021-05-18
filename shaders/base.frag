@@ -14,7 +14,8 @@ layout(location = 5) in vec2 inUV1;
 
 layout(location = 0) out vec4 outColor;
 
-layout(binding = 1) uniform samplerCube envMap;
+layout(binding = 1) uniform samplerCube reflMap;
+layout(binding = 2) uniform samplerCube irrMap;
 
 layout(set = 2, binding = 0) uniform sampler2D baseColorMap;
 layout(set = 2, binding = 1) uniform sampler2D normalMap;
@@ -82,7 +83,7 @@ void main() {
 	vec4 omr = vec4(1, roughnessFactor, metallicFactor, 0);
 	vec4 mR = metallicRoughnessTextureSet > -1 ? texture(metallicRoughnessMap, inUV0) * omr : omr;
 
-	float occlusion = mR.r;
+	float occ = mR.r;
 	float roughness = mR.g;
 	float metallic = mR.b;
    
@@ -95,6 +96,7 @@ void main() {
 
 	float dotL = clamp(dot(n, l), 0.001, 1.0);
 	float dotV = clamp(abs(dot(n, v)), 0.001, 1.0);
+	float VdotH = clamp(abs(dot(v, h)), 0.001, 1.0);
 	float dotH = clamp(dot(n, h), 0., 1.);
 
 	// F0 - lerp between dielectric and metallic
@@ -103,7 +105,7 @@ void main() {
 	float a = roughness * roughness;
 
 	// Fresnel
-	vec3 F = f0 + (1. - f0) * pow((1. - abs(dotL)),5.);
+	vec3 F = f0 + (1. - f0) * pow((1. - abs(VdotH)),5.);
 
 	// Geometric occlusion
 	float attenuationL = 2.0 * dotL / (dotL + sqrt(a + (1.0 - a) * (dotL * dotL)));
@@ -116,7 +118,7 @@ void main() {
 	//D = pow(dotH, 128.0);
 
 	// Get Diffuse for dielectric parts and set to 0 for metallic
-	vec3 diffuse = mix(baseColor.rgb, vec3(0), metallic);
+	vec3 diffuse = mix(baseColor.rgb * (1.- f0), vec3(0), metallic);
 	
 	diffuse = (1.0 - F) * (1.0 / M_PI) * diffuse;
 	
@@ -125,13 +127,17 @@ void main() {
 	// Save shiny
 	//specular = pow(dotV, 128.0) * baseColor.rgb + baseColor.rgb * 0.2;
 	//outColor.rgb = dotL * diffuse  + specular;
-	outColor.rgb = dotL * (diffuse  + specular);
+	const vec3 lightColor = vec3(3.0);
+	outColor.rgb = dotL * lightColor * (diffuse  + specular);
 	
 	// Add IBl Contribution
-	vec3 refl = normalize(reflect(v, n));
-	refl.y *= -1.0f;
-	outColor.rgb += f0 * sRgbToLinear(tonemap(textureLod(envMap, refl, 12*roughness))).rgb;	
-	outColor = mix(outColor * 0.1, outColor, occlusion);
+	vec3 refl = -normalize(reflect(v, n));
+	//refl.y *= -1.0f;
+	vec3 iblC = baseColor.rgb * sRgbToLinear(tonemap(texture(irrMap, n))).rgb;
+	//vec3 iblS = F * sRgbToLinear(tonemap(textureLod(reflMap, refl, 12*roughness))).rgb;
+	outColor.rgb += iblC /*+ iblS*/;
+
+	outColor = mix(outColor, outColor * occ, 1.);
 	outColor.a = baseColor.a;
 	//outColor = tonemap(outColor);
 }

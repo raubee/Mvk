@@ -32,7 +32,7 @@ namespace mvk
 		void createUniformBufferObject();
 		void updateDescriptorSets();
 		void updateUniformBufferObject(float time, float deltaTime);
-
+		
 	public:
 
 		vk::DescriptorSetLayout descriptorSetLayout;
@@ -47,7 +47,7 @@ namespace mvk
 		void update(float time, float deltaTime);
 		void release() const;
 
-		void renderSkybox(vk::CommandBuffer commandBuffer) const;
+		void renderSkybox(vk::CommandBuffer commandBuffer);
 
 		vk::DescriptorSet getDescriptorSet(const int i)
 		{

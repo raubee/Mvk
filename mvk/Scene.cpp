@@ -33,7 +33,7 @@ void Scene::release() const
 		         .destroyDescriptorSetLayout(descriptorSetLayout);
 }
 
-void Scene::renderSkybox(const vk::CommandBuffer commandBuffer) const
+void Scene::renderSkybox(const vk::CommandBuffer commandBuffer)
 {
 	if (!skybox)
 	{
@@ -138,7 +138,7 @@ void Scene::createDescriptorSetLayout()
 	if (skybox)
 	{
 		layoutBindings.push_back(
-			// Skybox
+			// Reflection map
 			{
 				.binding = 1,
 				.descriptorType =
@@ -147,6 +147,17 @@ void Scene::createDescriptorSetLayout()
 				.stageFlags = vk::ShaderStageFlagBits::eFragment
 			}
 		);
+
+		if (skybox->irradianceMap)
+		{
+			// Irradiance map
+			layoutBindings.push_back({
+				.binding = 2,
+				.descriptorType = vk::DescriptorType::eCombinedImageSampler,
+				.descriptorCount = 1,
+				.stageFlags = vk::ShaderStageFlagBits::eFragment
+			});
+		}
 	}
 
 	const auto bindingCount =
@@ -188,7 +199,7 @@ void Scene::updateDescriptorSets()
 		if (skybox)
 		{
 			writeDescriptorSets.push_back(
-				// EnvMap
+				// Reflection map
 				{
 					.dstSet = descriptorSet,
 					.dstBinding = 1,
@@ -198,6 +209,22 @@ void Scene::updateDescriptorSets()
 					.pImageInfo = &skybox->cubemap.descriptorInfo,
 				}
 			);
+
+			if (skybox->irradianceMap)
+			{
+				writeDescriptorSets.push_back(
+					// Irradiance map
+					{
+						.dstSet = descriptorSet,
+						.dstBinding = 2,
+						.dstArrayElement = 0,
+						.descriptorCount = 1,
+						.descriptorType = vk::DescriptorType::
+						eCombinedImageSampler,
+						.pImageInfo = &skybox->irradianceMap->descriptorInfo,
+					}
+				);
+			}
 		}
 
 		const auto descriptorCount =
