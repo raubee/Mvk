@@ -213,8 +213,8 @@ void Scene::updateUniformBufferObject(const float time, const float deltaTime)
 {
 	UniformBufferObject ubo{};
 
-	modelMatrix = glm::rotate(glm::mat4(1), glm::radians(20.f) * deltaTime,
-	                          glm::vec3(0, 1, 0)) * modelMatrix;
+	//modelMatrix = glm::rotate(glm::mat4(1), glm::radians(20.f) * deltaTime,
+	//                          glm::vec3(0, 1, 0)) * modelMatrix;
 	ubo.model = modelMatrix;
 	ubo.view = camera.viewMatrix;
 	ubo.proj = camera.projMatrix;

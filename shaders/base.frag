@@ -82,9 +82,9 @@ void main() {
 	vec4 omr = vec4(1, roughnessFactor, metallicFactor, 0);
 	vec4 mR = metallicRoughnessTextureSet > -1 ? texture(metallicRoughnessMap, inUV0) * omr : omr;
 
-	float occlusion = mR.x;
-	float roughness = mR.y;
-	float metallic = mR.z;
+	float occlusion = mR.r;
+	float roughness = mR.g;
+	float metallic = mR.b;
    
 	vec3 lightDir = normalize(vec3(0., -.5, -.5));
 
@@ -128,9 +128,9 @@ void main() {
 	outColor.rgb = dotL * (diffuse  + specular);
 	
 	// Add IBl Contribution
-	vec3 refl = -normalize(reflect(v, n));
+	vec3 refl = normalize(reflect(v, n));
 	refl.y *= -1.0f;
-	outColor.rgb += sRgbToLinear(texture(envMap, refl)).rgb * 0.05 * (1.-roughness) +  baseColor.rgb * 0.2;	
+	outColor.rgb += f0 * sRgbToLinear(tonemap(textureLod(envMap, refl, 12*roughness))).rgb;	
 	outColor = mix(outColor * 0.1, outColor, occlusion);
 	outColor.a = baseColor.a;
 	//outColor = tonemap(outColor);

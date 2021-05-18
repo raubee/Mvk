@@ -11,6 +11,7 @@ void CubemapTexture::loadFromSixFiles(Device* device,
                                       const vk::Format format)
 {
 	this->ptrDevice = device;
+	this->format = format;
 
 	const auto nbTextures = 6;
 	vk::DeviceSize imageSize = 0;
@@ -24,8 +25,10 @@ void CubemapTexture::loadFromSixFiles(Device* device,
 		                         STBI_rgb_alpha);
 		if (i == 0)
 		{
-			this->width = static_cast<uint32_t>(w);
-			this->height = static_cast<uint32_t>(h);
+			width = static_cast<uint32_t>(w);
+			height = static_cast<uint32_t>(h);
+			mipLevels = static_cast<uint32_t>(std::floor(
+				std::log2(std::max(width, height)))) + 1;
 			imageSize = width * height * 4;
 			pixels = new unsigned char[imageSize * nbTextures];
 		}
@@ -42,9 +45,9 @@ void CubemapTexture::loadFromSixFiles(Device* device,
 		stbi_image_free(p);
 	}
 
-	this->format = format;
-	this->image = copyDataToGpuImage(transferQueue, pixels,
-	                                 width, height, format);
+	image = copyDataToGpuImage(transferQueue, pixels, width, height, mipLevels,
+	                           format);
+
 	createImageView();
 	createSampler();
 	createDescriptorInfo();
@@ -55,7 +58,8 @@ alloc::Image CubemapTexture::copyDataToGpuImage(
 	const unsigned char* pixels,
 	const uint32_t width,
 	const uint32_t height,
-	const vk::Format format) const
+	const uint32_t mipLevels,
+	const vk::Format format)
 {
 	const vk::DeviceSize imageSize = width * height * 4 * 6;
 	const vk::BufferCreateInfo bufferCreateInfo{
@@ -79,11 +83,12 @@ alloc::Image CubemapTexture::copyDataToGpuImage(
 		.imageType = vk::ImageType::e2D,
 		.format = format,
 		.extent = imageExtent,
-		.mipLevels = 1,
+		.mipLevels = mipLevels,
 		.arrayLayers = 6,
 		.samples = vk::SampleCountFlagBits::e1,
 		.tiling = vk::ImageTiling::eOptimal,
 		.usage = vk::ImageUsageFlagBits::eTransferDst |
+		vk::ImageUsageFlagBits::eTransferSrc |
 		vk::ImageUsageFlagBits::eSampled,
 		.sharingMode = vk::SharingMode::eExclusive,
 		.initialLayout = vk::ImageLayout::eUndefined,
@@ -108,31 +113,36 @@ alloc::Image CubemapTexture::copyDataToGpuImage(
 
 	const vk::ImageSubresourceRange subresourceRange{
 		.baseMipLevel = 0,
-		.levelCount = 1,
+		.levelCount = mipLevels,
 		.baseArrayLayer = 0,
 		.layerCount = 6
 	};
 
-	for (auto i = 0; i < 6; i++)
+	ptrDevice->transitionImageLayout(transferQueue, imageBuffer.image,
+		vk::ImageLayout::eUndefined,
+		vk::ImageLayout::eTransferDstOptimal,
+		subresourceRange);
+
+	for (uint32_t i = 0; i < 6; i++)
 	{
 		bufferImageCopy.imageSubresource.baseArrayLayer = i;
 		bufferImageCopy.bufferOffset = i * width * height * 4;
-
-		ptrDevice->transitionImageLayout(transferQueue, imageBuffer.image,
-		                                 vk::ImageLayout::eUndefined,
-		                                 vk::ImageLayout::eTransferDstOptimal,
-		                                 subresourceRange);
 
 		ptrDevice->copyCpuBufferToGpuImage(transferQueue, stagingBuffer,
 		                                   imageBuffer,
 		                                   bufferImageCopy);
 
-		ptrDevice->transitionImageLayout(transferQueue, imageBuffer.image,
-		                                 vk::ImageLayout::eTransferDstOptimal,
-		                                 vk::ImageLayout::
-		                                 eShaderReadOnlyOptimal,
-		                                 subresourceRange);
+		if (mipLevels > 1)
+		{
+			generateMipMaps(transferQueue, imageBuffer.image, i);
+		}
 	}
+
+	ptrDevice->transitionImageLayout(transferQueue, imageBuffer.image,
+		vk::ImageLayout::eTransferDstOptimal,
+		vk::ImageLayout::
+		eShaderReadOnlyOptimal,
+		subresourceRange);
 
 	alloc::deallocateBuffer(ptrDevice->allocator, stagingBuffer);
 
@@ -149,7 +159,7 @@ void CubemapTexture::createImageView()
 		.subresourceRange = {
 			.aspectMask = vk::ImageAspectFlagBits::eColor,
 			.baseMipLevel = 0,
-			.levelCount = 1,
+			.levelCount = mipLevels,
 			.baseArrayLayer = 0,
 			.layerCount = 6
 		}
@@ -173,7 +183,7 @@ void CubemapTexture::createSampler()
 		.compareEnable = vk::Bool32(false),
 		.compareOp = vk::CompareOp::eAlways,
 		.minLod = 0.0f,
-		.maxLod = 0.0f,
+		.maxLod = static_cast<float>(mipLevels),
 		.borderColor = vk::BorderColor::eIntOpaqueBlack,
 		.unnormalizedCoordinates = vk::Bool32(false),
 	};
@@ -188,11 +198,4 @@ void CubemapTexture::createDescriptorInfo()
 		.imageView = getImageView(),
 		.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
 	};
-}
-
-void CubemapTexture::release() const
-{
-	ptrDevice->logicalDevice.destroySampler(sampler);
-	ptrDevice->logicalDevice.destroyImageView(imageView);
-	ptrDevice->destroyImage(image);
 }

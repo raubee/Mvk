@@ -63,7 +63,6 @@ alloc::Image Texture2D::copyDataToGpuImage(const vk::Queue transferQueue,
                                            const uint32_t height,
                                            const uint32_t mipLevels,
                                            const vk::Format format)
-const
 {
 	const vk::DeviceSize imageSize = width * height * 4;
 	const vk::BufferCreateInfo bufferCreateInfo{
@@ -130,9 +129,9 @@ const
 	                                   imageBuffer,
 	                                   bufferImageCopy);
 
-	if(mipLevels > 1)
+	if (mipLevels > 1)
 	{
-		generateMipMaps(transferQueue, imageBuffer.image);
+		generateMipMaps(transferQueue, imageBuffer.image, 0);
 	}
 
 	ptrDevice->transitionImageLayout(transferQueue, imageBuffer.image,
@@ -144,108 +143,6 @@ const
 	alloc::deallocateBuffer(ptrDevice->allocator, stagingBuffer);
 
 	return imageBuffer;
-}
-
-void Texture2D::generateMipMaps(const vk::Queue transferQueue,
-                                const vk::Image image) const
-{
-	const auto commandBuffer = ptrDevice->beginOneTimeSubmitCommands();
-
-	int mipWidth = width;
-	int mipHeight = height;
-
-	for (auto i = 1; i < mipLevels; i++)
-	{
-		vk::ImageMemoryBarrier imageMemoryBarrier{
-			.srcAccessMask = vk::AccessFlagBits::eTransferWrite,
-			.dstAccessMask = vk::AccessFlagBits::eTransferRead,
-			.oldLayout = vk::ImageLayout::eTransferDstOptimal,
-			.newLayout = vk::ImageLayout::eTransferSrcOptimal,
-			.image = image,
-			.subresourceRange{
-				.aspectMask = vk::ImageAspectFlagBits::eColor,
-				.baseMipLevel = static_cast<uint32_t>(i - 1),
-				.levelCount = 1,
-				.baseArrayLayer = 0,
-				.layerCount = 1
-			}
-		};
-
-		commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-		                              vk::PipelineStageFlagBits::
-		                              eTransfer,
-		                              vk::DependencyFlagBits::eByRegion,
-		                              0, nullptr, 0, nullptr,
-		                              1, &imageMemoryBarrier);
-
-		const std::array<vk::Offset3D, 2> srcOffsets{
-			vk::Offset3D{0, 0, 0},
-			vk::Offset3D{mipWidth, mipHeight, 1}
-		};
-
-		const std::array<vk::Offset3D, 2> dstOffsets{
-			vk::Offset3D{0, 0, 0},
-			vk::Offset3D{
-				mipWidth > 1 ? mipWidth / 2 : 1,
-				mipHeight > 1 ? mipHeight / 2 : 1,
-				1
-			}
-		};
-
-		vk::ImageBlit imageBlit{
-			.srcSubresource{
-				.aspectMask = vk::ImageAspectFlagBits::eColor,
-				.mipLevel = static_cast<uint32_t>(i - 1),
-				.baseArrayLayer = 0,
-				.layerCount = 1
-			},
-			.srcOffsets = srcOffsets,
-
-			.dstSubresource{
-				.aspectMask = vk::ImageAspectFlagBits::eColor,
-				.mipLevel = static_cast<uint32_t>(i),
-				.baseArrayLayer = 0,
-				.layerCount = 1
-			},
-			.dstOffsets = dstOffsets
-		};
-
-
-		commandBuffer.blitImage(image,
-		                        vk::ImageLayout::eTransferSrcOptimal,
-		                        image,
-		                        vk::ImageLayout::eTransferDstOptimal, 1,
-		                        &imageBlit,
-		                        vk::Filter::eLinear);
-
-
-		if (mipWidth > 1) mipWidth /= 2;
-		if (mipHeight > 1) mipHeight /= 2;
-	}
-
-	vk::ImageMemoryBarrier imageMemoryBarrier{
-		.srcAccessMask = vk::AccessFlagBits::eTransferRead,
-		.dstAccessMask = vk::AccessFlagBits::eTransferWrite,
-		.oldLayout = vk::ImageLayout::eTransferSrcOptimal,
-		.newLayout = vk::ImageLayout::eTransferDstOptimal,
-		.image = image,
-		.subresourceRange{
-			.aspectMask = vk::ImageAspectFlagBits::eColor,
-			.baseMipLevel = 0,
-			.levelCount = mipLevels - 1,
-			.baseArrayLayer = 0,
-			.layerCount = 1
-		}
-	};
-
-	commandBuffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
-	                              vk::PipelineStageFlagBits::
-	                              eTransfer,
-	                              vk::DependencyFlagBits::eByRegion,
-	                              0, nullptr, 0, nullptr,
-	                              1, &imageMemoryBarrier);
-
-	ptrDevice->endOneTimeSubmitCommands(commandBuffer, transferQueue);
 }
 
 void Texture2D::createImageView()
@@ -297,11 +194,4 @@ void Texture2D::createDescriptorInfo()
 		.imageView = getImageView(),
 		.imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal
 	};
-}
-
-void Texture2D::release() const
-{
-	ptrDevice->logicalDevice.destroySampler(sampler);
-	ptrDevice->logicalDevice.destroyImageView(imageView);
-	ptrDevice->destroyImage(image);
 }

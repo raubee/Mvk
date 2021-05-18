@@ -173,6 +173,7 @@
     <ClInclude Include="mvk\Skybox.h" />
     <ClInclude Include="mvk\SwapChain.h" />
     <ClInclude Include="mvk\SwapchainFrame.h" />
+    <ClInclude Include="mvk\Texture.hpp" />
     <ClInclude Include="mvk\Texture2D.h" />
     <ClInclude Include="mvk\Utils.hpp" />
     <ClInclude Include="mvk\Vertex.h" />

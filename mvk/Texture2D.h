@@ -1,32 +1,21 @@
 #pragma once
 
-#include "Device.hpp"
+#include "Texture.hpp"
 
 namespace mvk
 {
-	class Texture2D
+	class Texture2D : public Texture
 	{
-		Device* ptrDevice;
-
-		uint32_t width = 0;
-		uint32_t height = 0;
-		uint32_t mipLevels = 0;
-
-		vk::Format format = vk::Format::eUndefined;
-		alloc::Image image;
-		vk::ImageView imageView;
-		vk::Sampler sampler;
-
 		alloc::Image copyDataToGpuImage(vk::Queue transferQueue,
 		                                const unsigned char* pixels,
 		                                uint32_t width,
 		                                uint32_t height,
 		                                uint32_t mipLevels,
-		                                vk::Format format) const;
-		void generateMipMaps(vk::Queue transferQueue, vk::Image image) const;
-		void createImageView();
-		void createSampler();
-		void createDescriptorInfo();
+		                                vk::Format format) override;
+
+		void createImageView() override;
+		void createSampler() override;
+		void createDescriptorInfo() override;
 
 	public:
 
@@ -39,15 +28,6 @@ namespace mvk
 		                  vk::Queue transferQueue,
 		                  const char* path,
 		                  vk::Format format);
-
-		void release() const;
-
-		vk::Sampler getSampler() const { return sampler; }
-		vk::ImageView getImageView() const { return imageView; }
-
-		uint32_t getWidth() const { return width; }
-		uint32_t getHeight() const { return height; }
-		vk::Format getFormat() const { return format; }
 
 		inline static Texture2D* empty;
 	};
